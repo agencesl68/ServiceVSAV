@@ -1,0 +1,2700 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Kits VSAV">
+<title>Kits VSAV — CS Seppois-le-Bas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
+<style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root{
+  color-scheme: light;           /* app terrain : fond clair imposé, jamais de dark auto */
+
+  --brand:        #E10717;   /* rouge relevé sur le logo SDIS 68 */
+  --brand-dark:   #C10614;
+  --brand-darker: #9E0510;
+  --on-brand:     #FFFFFF;
+
+  --bg:        #F1F3F6;
+  --surface:   #FFFFFF;
+  --surface-2: #F8FAFC;
+  --fg:        #0F172A;
+  --fg-2:      #475569;
+  --fg-3:      #64748B;
+  --border:    #E2E6EC;
+  --border-2:  #CBD5E1;
+
+  /* palette data — validée (validate_palette.js, mode light) */
+  --data:      #2563EB;
+  --data-soft: #DBEAFE;
+
+  --ok:        #15803D;  --ok-bg:   #DCFCE7;  --ok-fg:   #14532D;
+  --warn:      #CA8A04;  --warn-bg: #FEF9C3;  --warn-fg: #854D0E;
+  --crit:      #B91C1C;  --crit-bg: #FEE2E2;  --crit-fg: #7F1D1D;
+
+  --r-sm: 8px; --r: 12px; --r-lg: 16px; --r-xl: 22px;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
+
+  --sh-1: 0 1px 2px rgba(15,23,42,.06), 0 1px 1px rgba(15,23,42,.04);
+  --sh-2: 0 4px 12px rgba(15,23,42,.08), 0 1px 3px rgba(15,23,42,.05);
+  --sh-3: 0 12px 32px rgba(15,23,42,.16);
+
+  --ff: 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --nav-h: 62px;
+  --bar-h: 0px;      /* hauteur de la barre d'action collante quand elle est visible */
+  --dur: 180ms;
+  --ease: cubic-bezier(.2,.7,.3,1);
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font-family:var(--ff); font-size:16px; line-height:1.5;
+  -webkit-font-smoothing:antialiased; overscroll-behavior-y:contain;
+  -webkit-tap-highlight-color:transparent;
+}
+h1,h2,h3,h4{margin:0; line-height:1.25; letter-spacing:-0.015em}
+button,input,select,textarea{font:inherit; color:inherit}
+button{cursor:pointer}
+.num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1}
+[hidden]{display:none!important}
+
+:focus-visible{outline:3px solid #2563EB; outline-offset:2px; border-radius:4px}
+
+/* ============================================================
+   APP SHELL
+   ============================================================ */
+#app{min-height:100dvh; display:flex; flex-direction:column}
+.shell{
+  width:100%; max-width:820px; margin:0 auto; flex:1;
+  display:flex; flex-direction:column;
+}
+.topbar{
+  position:sticky; top:0; z-index:40;
+  background:var(--surface); color:var(--brand);
+  padding: max(env(safe-area-inset-top), 8px) var(--s4) 0;
+  border-bottom:1px solid var(--border);
+  box-shadow:0 1px 3px rgba(15,23,42,.05);
+}
+.topbar-in{
+  max-width:820px; margin:0 auto;
+  min-height:56px; display:flex; align-items:center; gap:var(--s3);
+}
+.topbar h1{font-size:17px; font-weight:700; letter-spacing:-0.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.topbar .sub{font-size:12px; color:var(--brand); font-weight:600; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.topbar .spacer{flex:1}
+.icon-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:44px; min-height:44px; border:0; background:transparent;
+  color:inherit; border-radius:var(--r); transition:background var(--dur) var(--ease);
+}
+.icon-btn:hover{background:rgba(255,255,255,.14)}
+.icon-btn:active{background:rgba(255,255,255,.24)}
+.icon-btn[aria-current="page"]{background:rgba(255,255,255,.22)}
+.topbar .icon-btn:hover{background:rgba(225,7,23,.09)}
+.topbar .icon-btn:active{background:rgba(225,7,23,.16)}
+.topbar .icon-btn[aria-current="page"]{background:rgba(225,7,23,.13)}
+.icon-btn.dark{color:var(--fg-2)}
+.icon-btn.dark:hover{background:#0f172a12}
+
+.crest-logo{ width:42px; height:42px; flex:none; object-fit:contain; }
+.crest{
+  width:38px; height:38px; border-radius:10px; flex:none;
+  background:#fff; color:var(--brand-dark);
+  display:grid; place-items:center; box-shadow:var(--sh-1);
+}
+
+.bandeau-demo{
+  display:flex; align-items:flex-start; gap:9px;
+  background:var(--warn-bg); color:var(--warn-fg);
+  border-bottom:1px solid #FDE68A; padding:11px var(--s4);
+  font-size:12.5px; font-weight:600; line-height:1.4;
+}
+.bandeau-demo .ic{flex:none; margin-top:1px}
+
+main{flex:1; padding:var(--s4) var(--s4) calc(var(--nav-h) + var(--bar-h) + env(safe-area-inset-bottom) + var(--s6));
+     transition:padding-bottom var(--dur) var(--ease)}
+.view{animation:fade var(--dur) var(--ease)}
+@keyframes fade{from{opacity:0; transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ============================================================
+   BOTTOM NAV
+   ============================================================ */
+.nav{
+  position:fixed; left:0; right:0; bottom:0; z-index:45;
+  background:rgba(255,255,255,.94); backdrop-filter:blur(12px);
+  border-top:1px solid var(--border);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.nav-in{max-width:820px; margin:0 auto; display:grid; grid-template-columns:repeat(5,1fr)}
+.nav button{
+  border:0; background:transparent; color:var(--fg-3);
+  min-height:var(--nav-h); display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:3px; font-size:11px; font-weight:600;
+  transition:color var(--dur) var(--ease); position:relative;
+}
+.nav button .ic{transition:transform var(--dur) var(--ease)}
+.nav button:active .ic{transform:scale(.9)}
+.nav button[aria-current="page"]{color:var(--brand-dark)}
+.nav button[aria-current="page"]::before{
+  content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:28px; height:3px; border-radius:0 0 3px 3px; background:var(--brand);
+}
+.nav .badge{
+  position:absolute; top:8px; left:calc(50% + 8px);
+  min-width:17px; height:17px; padding:0 4px; border-radius:9px;
+  background:var(--brand); color:#fff; font-size:10px; font-weight:800;
+  display:grid; place-items:center; line-height:1;
+}
+
+/* ============================================================
+   PRIMITIVES
+   ============================================================ */
+.card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--sh-1)}
+.card + .card{margin-top:var(--s3)}
+.pad{padding:var(--s4)}
+
+.section-title{
+  display:flex; align-items:center; gap:var(--s2);
+  font-size:12px; font-weight:800; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--fg-3); margin:var(--s5) 0 var(--s3);
+}
+.section-title:first-child{margin-top:0}
+.section-title .spacer{flex:1}
+
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:var(--s2);
+  min-height:48px; padding:0 var(--s5); border-radius:var(--r);
+  border:1px solid transparent; font-weight:700; font-size:15px;
+  transition:background var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.btn:active{transform:scale(.985)}
+.btn:disabled{opacity:.45; cursor:not-allowed; transform:none}
+.btn-primary{background:var(--brand); color:#fff; box-shadow:var(--sh-1)}
+.btn-primary:hover:not(:disabled){background:var(--brand-dark)}
+.btn-dark{background:var(--fg); color:#fff}
+.btn-dark:hover:not(:disabled){background:#1e293b}
+.btn-ghost{background:var(--surface); border-color:var(--border-2); color:var(--fg)}
+.btn-ghost:hover:not(:disabled){background:var(--surface-2)}
+.btn-soft{background:var(--surface-2); border-color:var(--border); color:var(--fg-2)}
+.btn-soft:hover:not(:disabled){background:#eef2f7}
+.btn-block{width:100%}
+.btn-sm{min-height:44px; padding:0 14px; font-size:13.5px; border-radius:var(--r-sm)}
+
+.field{margin-bottom:var(--s4)}
+.field:last-child{margin-bottom:0}
+.label{display:block; font-size:13px; font-weight:700; color:var(--fg-2); margin-bottom:6px}
+.label .req{color:var(--brand); margin-left:2px}
+.hint{font-size:12px; color:var(--fg-3); margin-top:6px; line-height:1.4}
+.inp{
+  width:100%; min-height:48px; padding:0 var(--s3); background:var(--surface);
+  border:1.5px solid var(--border-2); border-radius:var(--r); font-size:16px;
+  transition:border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+textarea.inp{padding:var(--s3); min-height:80px; resize:vertical}
+.inp:focus{outline:none; border-color:var(--data); box-shadow:0 0 0 3px #2563eb26}
+.inp[aria-invalid="true"]{border-color:var(--crit); background:#fff5f5}
+.err{display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--crit-fg); margin-top:6px}
+.inp-group{display:flex; gap:var(--s2)}
+.inp-group .inp{flex:1}
+
+.seg{display:flex; gap:var(--s1); background:var(--surface-2); border:1px solid var(--border); padding:4px; border-radius:var(--r)}
+.seg button{
+  flex:1; min-height:44px; border:0; border-radius:var(--r-sm); background:transparent;
+  font-size:13px; font-weight:700; color:var(--fg-3);
+  transition:background var(--dur) var(--ease), color var(--dur) var(--ease);
+  white-space:nowrap; padding:0 6px;
+}
+.seg button[aria-pressed="true"]{background:var(--surface); color:var(--fg); box-shadow:var(--sh-1)}
+
+.chips{display:flex; gap:var(--s2); flex-wrap:wrap}
+.chip{
+  display:inline-flex; align-items:center; gap:7px; min-height:44px; padding:0 15px;
+  border-radius:999px; border:1px solid var(--border-2); background:var(--surface);
+  font-size:13px; font-weight:600; color:var(--fg-2);
+  transition:all var(--dur) var(--ease);
+}
+.chip[aria-pressed="true"]{background:var(--fg); color:#fff; border-color:var(--fg)}
+.dot{display:inline-block; width:9px; height:9px; border-radius:3px; flex:none; vertical-align:middle;
+  box-shadow:inset 0 0 0 1px rgba(15,23,42,.16)}
+
+.badge{
+  display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:999px;
+  font-size:11.5px; font-weight:800; letter-spacing:.01em; white-space:nowrap;
+}
+.badge.ok{background:var(--ok-bg); color:var(--ok-fg)}
+.badge.warn{background:var(--warn-bg); color:var(--warn-fg)}
+.badge.crit{background:var(--crit-bg); color:var(--crit-fg)}
+.badge.neutral{background:var(--surface-2); color:var(--fg-3); border:1px solid var(--border)}
+.badge.info{background:var(--data-soft); color:#1E3A8A}
+
+.empty{
+  text-align:center; padding:var(--s7) var(--s4); color:var(--fg-3);
+}
+.empty .ic{color:var(--border-2); margin-bottom:var(--s3)}
+.empty p{margin:0; font-size:14px}
+.empty strong{display:block; color:var(--fg-2); font-size:15px; margin-bottom:4px}
+
+.row{display:flex; align-items:center; gap:var(--s3)}
+.row .spacer{flex:1}
+.stack{display:flex; flex-direction:column; gap:var(--s3)}
+.divider{height:1px; background:var(--border); margin:var(--s3) 0}
+.list > * + *{border-top:1px solid var(--border)}
+
+/* KPI */
+.kpis{display:grid; grid-template-columns:repeat(2,1fr); gap:var(--s2)}
+@media(min-width:600px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpi{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
+  padding:var(--s3); box-shadow:var(--sh-1); text-align:left;
+}
+.kpi .k-label{display:flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; color:var(--fg-3); text-transform:uppercase; letter-spacing:.05em}
+.kpi .k-val{font-size:27px; font-weight:800; letter-spacing:-0.03em; margin-top:2px; line-height:1.1}
+.kpi .k-sub{font-size:12px; color:var(--fg-3); font-weight:600}
+.kpi.is-crit .k-val{color:var(--crit)}
+.kpi.is-warn .k-val{color:var(--warn-fg)}
+.kpi.is-ok .k-val{color:var(--ok)}
+
+/* toast */
+.toasts{position:fixed; left:0; right:0; bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px); z-index:80; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; padding:0 var(--s4)}
+.toast{
+  display:flex; align-items:center; gap:10px; max-width:520px; width:100%;
+  background:var(--fg); color:#fff; padding:12px var(--s4); border-radius:var(--r);
+  box-shadow:var(--sh-3); font-size:14px; font-weight:600;
+  animation:toastIn 220ms var(--ease);
+}
+.toast.ok{background:#166534}
+.toast.err{background:var(--brand-dark)}
+@keyframes toastIn{from{opacity:0; transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+
+/* sheet / modal */
+.scrim{position:fixed; inset:0; background:rgba(15,23,42,.52); z-index:60; animation:fade 160ms var(--ease)}
+.sheet{
+  position:fixed; left:0; right:0; bottom:0; z-index:61;
+  background:var(--surface); border-radius:var(--r-xl) var(--r-xl) 0 0;
+  max-height:88dvh; display:flex; flex-direction:column;
+  box-shadow:var(--sh-3); animation:sheetIn 260ms var(--ease);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+@media(min-width:640px){
+  .sheet{max-width:560px; margin:0 auto; border-radius:var(--r-xl); bottom:24px; left:16px; right:16px}
+}
+@keyframes sheetIn{from{transform:translateY(24px); opacity:.6}to{transform:none;opacity:1}}
+.sheet-head{display:flex; align-items:center; gap:var(--s2); padding:var(--s4) var(--s4) var(--s3); border-bottom:1px solid var(--border)}
+.sheet-head h3{font-size:17px; font-weight:700; flex:1}
+.sheet-body{overflow:auto; padding:var(--s4); -webkit-overflow-scrolling:touch}
+.sheet-foot{padding:var(--s3) var(--s4) var(--s4); border-top:1px solid var(--border); background:var(--surface-2); border-radius:0 0 var(--r-xl) var(--r-xl)}
+
+/* sticky action bar */
+.stickybar{
+  position:fixed; left:0; right:0; bottom:var(--nav-h); z-index:44;
+  background:rgba(255,255,255,.96); backdrop-filter:blur(12px);
+  border-top:1px solid var(--border); padding:var(--s3) var(--s4);
+  padding-bottom:calc(var(--s3));
+  animation:sheetIn 220ms var(--ease);
+}
+.stickybar-in{max-width:820px; margin:0 auto; display:flex; align-items:center; gap:var(--s3)}
+
+/* ============================================================
+   KIT / STOCK
+   ============================================================ */
+.type-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--sh-1); overflow:hidden}
+.type-card + .type-card{margin-top:var(--s2)}
+.type-head{display:flex; align-items:center; gap:var(--s3); padding:var(--s3) var(--s4); width:100%; border:0; background:transparent; text-align:left; min-height:64px; transition:background var(--dur) var(--ease)}
+.type-head:hover{background:var(--surface-2)}
+.type-head:active{background:#eef2f7}
+.type-name{font-size:15px; font-weight:700; letter-spacing:-.01em}
+.type-meta{font-size:12.5px; color:var(--fg-3); font-weight:600; margin-top:1px}
+.type-right{display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex:none}
+.type-count{display:block; font-size:20px; font-weight:800; letter-spacing:-.02em; line-height:1}
+.type-count small{font-size:13px; font-weight:700; color:var(--fg-3)}
+.chev{color:var(--border-2); transition:transform var(--dur) var(--ease)}
+.type-head[aria-expanded="true"] .chev{transform:rotate(90deg)}
+
+.gauge{display:block; height:6px; border-radius:3px; background:var(--border); overflow:hidden; width:78px}
+.gauge i{display:block; height:100%; border-radius:3px; background:var(--ok); transition:width 300ms var(--ease)}
+.gauge.low i{background:var(--warn)}
+.gauge.none i{background:var(--crit)}
+
+.kit-row{display:flex; align-items:center; gap:var(--s3); padding:11px var(--s4); background:var(--surface-2)}
+.kit-row + .kit-row{border-top:1px solid var(--border)}
+.kit-no{font-size:15px; font-weight:800; letter-spacing:.01em; min-width:64px}
+.kit-per{font-size:12.5px; color:var(--fg-3); font-weight:600}
+
+.picker-item{
+  display:flex; align-items:center; gap:var(--s3); width:100%; text-align:left;
+  padding:var(--s3); border:1.5px solid var(--border); border-radius:var(--r);
+  background:var(--surface); min-height:60px; transition:all var(--dur) var(--ease);
+}
+.picker-item + .picker-item{margin-top:var(--s2)}
+.picker-item:hover{border-color:var(--border-2); background:var(--surface-2)}
+.picker-item[aria-pressed="true"]{border-color:var(--data); background:#eff6ff; box-shadow:0 0 0 3px #2563eb1f}
+.picker-item .fefo{font-size:10.5px; font-weight:800; letter-spacing:.05em; color:var(--data); text-transform:uppercase}
+
+.cart-item{display:flex; align-items:center; gap:var(--s3); padding:11px var(--s3); background:var(--surface); border:1px solid var(--border); border-radius:var(--r)}
+.cart-item + .cart-item{margin-top:var(--s2)}
+
+/* type grid (entrée) */
+.type-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:var(--s2)}
+@media(min-width:520px){.type-grid{grid-template-columns:repeat(3,1fr)}}
+.type-pick{
+  display:flex; flex-direction:column; align-items:flex-start; gap:5px;
+  padding:var(--s3); border:1.5px solid var(--border); border-radius:var(--r);
+  background:var(--surface); min-height:70px; text-align:left;
+  transition:all var(--dur) var(--ease); font-size:13.5px; font-weight:700; line-height:1.25;
+}
+.type-pick:hover{background:var(--surface-2); border-color:var(--border-2)}
+.type-pick[aria-pressed="true"]{border-color:var(--fg); background:var(--fg); color:#fff}
+.type-pick[aria-pressed="true"] .tp-sub{color:#ffffffb0}
+.tp-sub{font-size:11.5px; font-weight:600; color:var(--fg-3)}
+
+/* ============================================================
+   LOGIN
+   ============================================================ */
+.login{
+  position:relative; min-height:100dvh; display:flex; flex-direction:column;
+  justify-content:center; align-items:center; padding:var(--s5) var(--s4);
+  background:linear-gradient(170deg,#E10717 0%,#9E0510 44%,#0F172A 100%);
+  overflow:hidden;
+}
+/* Photo de fond passée en noir et blanc… */
+.login-fond{
+  position:absolute; inset:0; background-size:cover; background-position:center;
+  filter:grayscale(1) brightness(1.06) contrast(1.03);
+}
+/* …puis voilée de rouge, comme le portail du SDIS. */
+.login-voile{
+  position:absolute; inset:0;
+  background:radial-gradient(circle at 50% 42%,
+    rgba(225,7,23,.56) 0%, rgba(150,5,16,.76) 62%, rgba(15,23,42,.88) 100%);
+}
+.login-card{position:relative; z-index:1; width:100%; max-width:380px; background:var(--surface); border-radius:var(--r-xl); box-shadow:var(--sh-3); padding:var(--s5); animation:fade 300ms var(--ease)}
+.login-logo{display:block; width:120px; height:120px; object-fit:contain; margin:0 auto var(--s4)}
+.login-crest{width:56px; height:56px; border-radius:16px; background:var(--brand); color:#fff; display:grid; place-items:center; margin:0 auto var(--s3); box-shadow:0 6px 16px rgba(225,7,23,.28)}
+.login h2{text-align:center; font-size:21px; font-weight:800; letter-spacing:-.02em}
+.login .org{text-align:center; font-size:13px; color:var(--fg-3); font-weight:600; margin-top:3px; margin-bottom:var(--s5)}
+.pin-display{display:flex; justify-content:center; gap:10px; margin-bottom:var(--s4)}
+.pin-dot{width:14px; height:14px; border-radius:50%; background:var(--border); transition:all var(--dur) var(--ease)}
+.pin-dot.on{background:var(--brand); transform:scale(1.15)}
+.pin-display.shake{animation:shake 400ms}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--s2)}
+.keypad button{
+  min-height:58px; border-radius:var(--r); border:1px solid var(--border);
+  background:var(--surface-2); font-size:21px; font-weight:700;
+  transition:all 120ms var(--ease); display:grid; place-items:center;
+}
+.keypad button:hover{background:#eef2f7}
+.keypad button:active{background:var(--border); transform:scale(.95)}
+.keypad button.fn{background:transparent; border-color:transparent; color:var(--fg-3)}
+.demo-codes{margin-top:var(--s4); padding:var(--s3); background:var(--surface-2); border:1px dashed var(--border-2); border-radius:var(--r); font-size:12px; color:var(--fg-3); line-height:1.6}
+.demo-codes b{color:var(--fg-2)}
+
+/* ============================================================
+   SCANNER
+   ============================================================ */
+.scanner{position:fixed; inset:0; z-index:90; background:#000; display:flex; flex-direction:column}
+.scanner video{position:absolute; inset:0; width:100%; height:100%; object-fit:cover}
+.scan-frame{position:absolute; inset:0; display:grid; place-items:center; pointer-events:none}
+.scan-box{width:min(70vw,270px); aspect-ratio:1; border-radius:20px; box-shadow:0 0 0 100vmax rgba(0,0,0,.55); position:relative}
+.scan-box::before,.scan-box::after{content:''; position:absolute; width:38px; height:38px; border:4px solid #fff; border-radius:6px}
+.scan-box::before{top:-2px; left:-2px; border-right:0; border-bottom:0; border-radius:14px 0 0 0}
+.scan-box::after{bottom:-2px; right:-2px; border-left:0; border-top:0; border-radius:0 0 14px 0}
+.scan-line{position:absolute; left:8%; right:8%; height:3px; border-radius:3px; background:var(--brand); box-shadow:0 0 14px #dc2626; animation:scanline 2.1s ease-in-out infinite}
+@keyframes scanline{0%,100%{top:10%}50%{top:88%}}
+.scan-top{position:relative; z-index:2; padding:max(env(safe-area-inset-top),12px) var(--s4) var(--s3); display:flex; align-items:center; gap:var(--s2); color:#fff}
+.scan-top h3{flex:1; font-size:16px; font-weight:700}
+.scan-bottom{position:relative; z-index:2; margin-top:auto; padding:var(--s4); padding-bottom:calc(env(safe-area-inset-bottom) + 16px); color:#fff; text-align:center}
+.scan-bottom p{font-size:14px; margin:0 0 var(--s3); text-shadow:0 1px 6px rgba(0,0,0,.7)}
+.scan-raw{background:#ffffff1a; border:1px solid #ffffff33; border-radius:var(--r); padding:var(--s3); font-size:12px; word-break:break-all; text-align:left; margin-bottom:var(--s3)}
+
+/* ============================================================
+   HISTORIQUE
+   ============================================================ */
+.day-head{display:flex; align-items:baseline; gap:var(--s2); margin:var(--s5) 0 var(--s2); padding:0 2px}
+.day-head h4{font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--fg-2)}
+.day-head span{font-size:12px; color:var(--fg-3); font-weight:600}
+.mv{display:flex; align-items:flex-start; gap:var(--s3); padding:var(--s3) var(--s4); background:var(--surface)}
+.mv-ic{width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex:none; margin-top:1px}
+.mv-ic.in{background:var(--ok-bg); color:var(--ok)}
+.mv-ic.out{background:var(--crit-bg); color:var(--crit)}
+.mv-main{flex:1; min-width:0}
+.mv-t{font-size:14.5px; font-weight:700; letter-spacing:-.01em}
+.mv-s{font-size:12.5px; color:var(--fg-3); font-weight:600; margin-top:2px; display:flex; flex-wrap:wrap; gap:4px 8px}
+.mv-time{font-size:12px; color:var(--fg-3); font-weight:700; flex:none}
+
+/* ============================================================
+   CHARTS
+   ============================================================ */
+.chart-wrap{position:relative}
+.chart-wrap svg{display:block; width:100%; height:auto; overflow:visible}
+.c-grid{stroke:var(--border); stroke-width:1}
+.c-axis{fill:var(--fg-3); font-size:11px; font-weight:600; font-family:var(--ff)}
+.c-val{fill:var(--fg); font-size:11.5px; font-weight:800; font-family:var(--ff); font-variant-numeric:tabular-nums}
+.c-bar{transition:opacity 140ms var(--ease)}
+.chart-wrap:hover .c-bar{opacity:.45}
+.chart-wrap .c-bar:hover{opacity:1}
+.c-hit{fill:transparent; cursor:pointer}
+.hbar-row{display:grid; grid-template-columns:1fr; gap:5px; padding:9px 0}
+.hbar-row + .hbar-row{border-top:1px solid var(--border)}
+.hbar-top{display:flex; align-items:center; gap:var(--s2); font-size:13.5px; font-weight:600}
+.hbar-top .spacer{flex:1}
+.hbar-track{height:9px; border-radius:5px; background:var(--surface-2); border:1px solid var(--border); overflow:hidden}
+.hbar-fill{display:block; height:100%; border-radius:5px 3px 3px 5px; background:var(--data); transition:width 350ms var(--ease)}
+.stack-bar{display:flex; height:26px; border-radius:var(--r-sm); overflow:hidden; gap:2px; background:var(--border)}
+.stack-bar i{display:block; height:100%}
+.legend{display:flex; flex-wrap:wrap; gap:var(--s2) var(--s4); margin-top:var(--s3)}
+.legend span{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--fg-2)}
+.tip{
+  position:absolute; z-index:10; pointer-events:none; background:var(--fg); color:#fff;
+  padding:7px 10px; border-radius:var(--r-sm); font-size:12.5px; font-weight:600;
+  box-shadow:var(--sh-2); white-space:nowrap; transform:translate(-50%,-115%);
+}
+.tip b{font-weight:800}
+
+table.data{width:100%; border-collapse:collapse; font-size:13px}
+table.data th.n{text-align:right}
+table.data th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--fg-3); padding:6px 8px; border-bottom:1px solid var(--border)}
+table.data td{padding:7px 8px; border-bottom:1px solid var(--border); font-weight:600}
+table.data td.n{text-align:right; font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toasts" id="toasts" aria-live="polite" aria-atomic="true"></div>
+<div id="overlay"></div>
+
+<!-- ==========================================================
+     ICONES (Lucide, stroke 1.75, 24px) — jamais d'emoji
+     ========================================================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<g id="i-box"><path d="M21 8v8a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></g>
+<g id="i-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></g>
+<g id="i-in"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></g>
+<g id="i-hist"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></g>
+<g id="i-chart"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 15l3-4 3 3 4-6"/></g>
+<g id="i-cog"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></g>
+<g id="i-scan"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></g>
+<g id="i-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></g>
+<g id="i-check"><path d="M20 6 9 17l-5-5"/></g>
+<g id="i-check-circle"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></g>
+<g id="i-alert"><path d="m10.3 3.9-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3l-8-14a2 2 0 0 0-3.5 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></g>
+<g id="i-clock"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g>
+<g id="i-plus"><path d="M12 5v14"/><path d="M5 12h14"/></g>
+<g id="i-minus"><path d="M5 12h14"/></g>
+<g id="i-trash"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></g>
+<g id="i-chev-r"><path d="m9 18 6-6-6-6"/></g>
+<g id="i-chev-d"><path d="m6 9 6 6 6-6"/></g>
+<g id="i-back"><path d="m15 18-6-6 6-6"/></g>
+<g id="i-search"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></g>
+<g id="i-filter"><path d="M3 5h18"/><path d="M7 12h10"/><path d="M11 19h2"/></g>
+<g id="i-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></g>
+<g id="i-logout"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></g>
+<g id="i-user"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></g>
+<g id="i-shield"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></g>
+<g id="i-flame"><path d="M12 22a7 7 0 0 0 7-7c0-5-4-6-4-10 0 0-3 1.5-3 5 0-1.5-1-3-2-3.5 0 2-2 3-2 5.5a4 4 0 0 0 1 8Z"/></g>
+<g id="i-bolt"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></g>
+<g id="i-inbox"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></g>
+<g id="i-torch"><path d="M9 2h6v4l-2 2v13a1 1 0 0 1-1 1 1 1 0 0 1-1-1V8L9 6V2Z"/><path d="M9 6h6"/></g>
+<g id="i-calendar"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></g>
+<g id="i-refresh"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></g>
+<g id="i-copy"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></g>
+<g id="i-info"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></g>
+</defs>
+</svg>
+
+<script>
+'use strict';
+/* ============================================================================
+   KITS VSAV — CS Seppois-le-Bas · Service VSAV
+   PWA fichier unique. Mode démo : données en localStorage.
+   Le branchement Make.com se fait dans l'objet API (tout en bas) — aucune
+   autre partie du code ne touche au stockage.
+   ============================================================================ */
+
+/* ---------- 1. CONFIGURATION MÉTIER ------------------------------------- */
+
+const ORG = { cs: 'CS Seppois-le-Bas', service: 'Service VSAV' };
+
+/* Logo officiel des Sapeurs-Pompiers du Haut-Rhin. Vide = repli sur la flamme. */
+/* Fond photo de l'écran de connexion (voir make-assets.py). Traité en noir et
+   blanc puis recouvert d'un voile rouge, comme le portail du SDIS.
+   Vide = repli sur le dégradé rouge uni.                                     */
+const FOND_CONNEXION = 'fond.jpg';
+
+const LOGO_SDIS = 'logo.png';
+
+/* `hue` = pastille d'identité du type, reprise des couleurs utilisées au CS.
+   Elle accompagne toujours le libellé écrit : la couleur ne porte jamais seule
+   l'information (deux rouges et deux verts se ressemblent de près).          */
+/* L'ordre de ce tableau est l'ordre d'affichage partout : stock, sortie, entrée,
+   paramètres, tableau des stats. Les trois kits les plus utilisés en tête.     */
+let TYPES = [
+  { id:'PERFUSION',    label:'Perfusion',        hue:'#DC2626', dot:4 },  // rouge
+  { id:'MEDICAMENT',   label:'Médicament',       hue:'#EAB308', dot:3 },  // jaune
+  { id:'INTUBATION',   label:'Intubation',       hue:'#2563EB', dot:2 },  // bleu
+  { id:'MEMBRE_SECT',  label:'Membre sectionné', hue:'#16A34A', dot:2 },  // vert
+  { id:'BRULURE',      label:'Brûlure',          hue:'#E2541D', dot:3 },  // rouge orangé
+  { id:'ACCOUCHEMENT', label:'Accouchement',     hue:'#15803D', dot:2 },  // vert foncé
+  { id:'AES',          label:'AES',              hue:'#7C3AED', dot:3 },  // violet
+];
+let T = Object.fromEntries(TYPES.map(t => [t.id, t]));
+
+const MOTIFS = [
+  { id:'INTERVENTION', label:'Utilisé en intervention', short:'Intervention', tone:'info',    color:'#2563EB', needSis:true  },
+  { id:'PERIME',       label:'Périmé',                  short:'Périmé',       tone:'crit',    color:'#B91C1C', needSis:false },
+  { id:'ERREUR',       label:'Erreur / ouverture',      short:'Erreur',       tone:'warn',    color:'#CA8A04', needSis:false },
+  { id:'INUTILE',      label:'Sorti inutilement',       short:'Inutile',      tone:'warn',    color:'#EA580C', needSis:false },
+  { id:'CORRECTION',   label:"Correction d'inventaire", short:'Correction',   tone:'neutral', color:'#64748B', needSis:false },
+];
+const M = Object.fromEntries(MOTIFS.map(m => [m.id, m]));
+
+/** Chefs d'agrès du CS habilités à sortir des kits. */
+let CHEFS = [
+  'ATA Teva', 'BARRET Steve', 'BIHL Patrice', 'BRESSAC Cedric', 'CASPAR Laurent',
+  'DERRIEN Arnaud', 'DEVEILLE Laurent', 'ENDERLEN Didier', 'HARTMANN Sébastien',
+  'HIRTZLIN Denis', 'KLEIN Jean-Louis', 'MULLER Laetitia', 'MULLER Raphaël',
+  'SCHMITT Guillaume',
+  'SOLDERMANN Marc', 'SOLDERMANN Nicolas', 'STRUB Bertrand',
+];
+
+const DEFAULTS = {
+  alerteJours: 60,
+  codeChef: '1818',
+  admins: [
+    { code:'2601', nom:'MULLER Sacha'   },
+    { code:'1507', nom:'DERRIEN Arnaud' },
+  ],
+};
+
+/* ---------- 2. UTILITAIRES ---------------------------------------------- */
+
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sansAccent = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+function ico(name, size = 20) {
+  return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true" focusable="false"><use href="#i-${name}"/></svg>`;
+}
+
+const pad2 = n => String(n).padStart(2, '0');
+const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; };
+const fmtDate = iso => { if (!iso) return '—'; const [y,m,d] = iso.slice(0,10).split('-'); return `${d}/${m}/${y}`; };
+const fmtTime = iso => new Date(iso).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+const dayKey  = iso => iso.slice(0, 10);
+const monthKey= iso => iso.slice(0, 7);
+
+const MOIS = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+const MOIS_LONG = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const moisCourt = ym => MOIS[+ym.slice(5,7) - 1];
+const moisLong  = ym => `${MOIS_LONG[+ym.slice(5,7) - 1]} ${ym.slice(0,4)}`;
+
+function joursRestants(iso) {
+  if (!iso) return NaN;
+  const a = new Date(iso + 'T00:00:00'), b = new Date(todayISO() + 'T00:00:00');
+  return Math.round((a - b) / 86400000);
+}
+function jourLabel(iso) {
+  const t = todayISO();
+  if (iso === t) return "Aujourd'hui";
+  const h = new Date(t + 'T00:00:00'); h.setDate(h.getDate() - 1);
+  if (iso === `${h.getFullYear()}-${pad2(h.getMonth()+1)}-${pad2(h.getDate())}`) return 'Hier';
+  return new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+}
+function haptic(ms = 12) { try { navigator.vibrate?.(ms); } catch {} }
+
+/* ---------- 3. ÉTAT ------------------------------------------------------ */
+
+const KEY = 'vsav_kits_v3';
+let S = null;         // état applicatif
+let session = null;   // { nom, role:'chef'|'admin' }
+let route = 'stock';
+
+function save() {
+  if (enLigne()) return;          // la base Supabase fait foi, pas le navigateur
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
+}
+
+/** État minimal : de quoi afficher l'écran de connexion avant tout chargement. */
+function etatVide() {
+  return { kits: [], params: { dotation: Object.fromEntries(TYPES.map(t => [t.id, t.dot])),
+                               alerteJours: 60, codeChef: '', admins: [] } };
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) { S = JSON.parse(raw); return; }
+  } catch {}
+  S = seed();
+  save();
+}
+
+/* --- Statut de péremption d'un kit -------------------------------------- */
+function perStatus(kit) {
+  const j = joursRestants(kit.peremption);
+  if (Number.isNaN(j)) return { id:'inconnu', tone:'neutral', label:'Péremption inconnue', detail:'', jours:NaN };
+  if (j < 0)  return { id:'perime', tone:'crit', label:'Périmé',  detail:`depuis ${Math.abs(j)} j`, jours:j };
+  if (j <= S.params.alerteJours) return { id:'proche', tone:'warn', label:'Bientôt périmé', detail:`dans ${j} j`, jours:j };
+  return { id:'ok', tone:'ok', label:'Conforme', detail:`dans ${j} j`, jours:j };
+}
+
+/* --- Sélecteurs --------------------------------------------------------- */
+const enStock   = () => S.kits.filter(k => k.statut === 'stock');
+const stockType = id => enStock().filter(k => k.type === id).sort((a,b) => a.peremption.localeCompare(b.peremption));
+const dotation  = id => S.params.dotation[id] ?? 0;
+
+function bilan() {
+  const st = enStock();
+  const perimes = st.filter(k => perStatus(k).id === 'perime').length;
+  const proches = st.filter(k => perStatus(k).id === 'proche').length;
+  const manque  = TYPES.reduce((n, t) => n + Math.max(0, dotation(t.id) - stockType(t.id).length), 0);
+  return { total: st.length, perimes, proches, manque, cible: TYPES.reduce((n,t)=>n+dotation(t.id), 0) };
+}
+/** Nombre d'alertes à traiter (badge de nav) */
+const nbAlertes = () => { const b = bilan(); return b.perimes + b.manque; };
+
+/** Journal des mouvements, dérivé des kits — pas de doublon de données. */
+function mouvements() {
+  const out = [];
+  for (const k of S.kits) {
+    if (!k.horsInventaire) {
+      out.push({ id:k.id+'-in', sens:'ENTREE', ts:k.entreLe, type:k.type, numero:k.numero,
+                 peremption:k.peremption, par:k.entrePar });
+    }
+    if (k.statut === 'sorti') {
+      out.push({ id:k.id+'-out', sens:'SORTIE', ts:k.sortieLe, type:k.type, numero:k.numero,
+                 peremption:k.peremption, par:k.sortiePar, motif:k.motif,
+                 intervention:k.intervention, kitId:k.id, horsInventaire:k.horsInventaire,
+                 joursStock: k.horsInventaire ? -1
+                   : Math.round((new Date(k.sortieLe) - new Date(k.entreLe)) / 86400000) });
+    }
+  }
+  return out.sort((a,b) => b.ts.localeCompare(a.ts));
+}
+
+/* ---------- 4. JEU DE DONNÉES DE DÉMONSTRATION -------------------------- */
+/* Reproduit les volumes réels observés dans le Google Sheet actuel :
+   ~4 à 9 sorties/mois, majorité PERFUSION + MEDICAMENT, quelques péremptions. */
+function seed() {
+  const rnd = (seed => () => (seed = seed * 16807 % 2147483647) / 2147483647)(20260904);
+  const pick = a => a[Math.floor(rnd() * a.length)];
+  const chefs = CHEFS;
+  const poids = ['PERFUSION','PERFUSION','PERFUSION','MEDICAMENT','MEDICAMENT','MEDICAMENT',
+                 'AES','BRULURE','INTUBATION','ACCOUCHEMENT','MEMBRE_SECT'];
+
+  const kits = [];
+  let numero = 24100;
+  const now = new Date();
+  const iso = d => d.toISOString();
+
+  // 15 mois d'historique
+  for (let mBack = 15; mBack >= 1; mBack--) {
+    const nb = 3 + Math.floor(rnd() * 6);
+    for (let i = 0; i < nb; i++) {
+      const type = pick(poids);
+      const sortie = new Date(now); sortie.setMonth(sortie.getMonth() - mBack);
+      sortie.setDate(1 + Math.floor(rnd() * 27));
+      sortie.setHours(7 + Math.floor(rnd()*15), Math.floor(rnd()*60), 0, 0);
+      const entree = new Date(sortie); entree.setDate(entree.getDate() - (20 + Math.floor(rnd()*250)));
+
+      const r = rnd();
+      const motif = r < .70 ? 'INTERVENTION' : r < .86 ? 'PERIME' : r < .93 ? 'ERREUR' : r < .97 ? 'INUTILE' : 'CORRECTION';
+      const per = new Date(sortie);
+      per.setMonth(per.getMonth() + (motif === 'PERIME' ? -1 - Math.floor(rnd()*2) : 4 + Math.floor(rnd()*20)));
+
+      kits.push({
+        id: uid(), type, numero: String(numero += 1 + Math.floor(rnd()*40)),
+        peremption: iso(per).slice(0,10),
+        entreLe: iso(entree), entrePar: pick(['DERRIEN Arnaud','MULLER Sacha']),
+        statut: 'sorti', sortieLe: iso(sortie), sortiePar: pick(chefs), motif,
+        intervention: motif === 'INTERVENTION' ? String(19000 + Math.floor(rnd()*9000)) : '',
+      });
+    }
+  }
+
+  // Stock actuellement en place — volontairement imparfait (manques + péremptions)
+  const enPlace = { MEDICAMENT:3, PERFUSION:4, MEMBRE_SECT:2, BRULURE:2, ACCOUCHEMENT:2, INTUBATION:1, AES:3 };
+  for (const [type, n] of Object.entries(enPlace)) {
+    for (let i = 0; i < n; i++) {
+      const per = new Date(now);
+      const r = rnd();
+      // ~10 % périmés, ~20 % bientôt périmés, le reste conforme
+      per.setMonth(per.getMonth() + (r < .10 ? -1 : r < .30 ? 1 : 6 + Math.floor(rnd()*24)));
+      per.setDate(1 + Math.floor(rnd()*27));
+      const entree = new Date(now); entree.setDate(entree.getDate() - (5 + Math.floor(rnd()*300)));
+      kits.push({
+        id: uid(), type, numero: String(numero += 1 + Math.floor(rnd()*40)),
+        peremption: iso(per).slice(0,10),
+        entreLe: iso(entree), entrePar: pick(['DERRIEN Arnaud','MULLER Sacha']),
+        statut: 'stock',
+      });
+    }
+  }
+
+  return {
+    kits,
+    params: {
+      dotation: Object.fromEntries(TYPES.map(t => [t.id, t.dot])),
+      alerteJours: DEFAULTS.alerteJours,
+      codeChef: DEFAULTS.codeChef,
+      admins: DEFAULTS.admins.map(a => ({ ...a })),
+    },
+  };
+}
+
+/* ---------- 5. UI : toasts, feuilles modales ---------------------------- */
+
+function toast(msg, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.innerHTML = (kind === 'ok' ? ico('check-circle', 18) : kind === 'err' ? ico('alert', 18) : ico('info', 18))
+               + `<span>${esc(msg)}</span>`;
+  $('#toasts').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 200ms'; }, 2600);
+  setTimeout(() => el.remove(), 2900);
+}
+
+let sheetCleanup = null;
+function openSheet({ title, body, foot, onMount }) {
+  closeSheet();
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div class="scrim" data-close></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+      <div class="sheet-head">
+        <h3>${esc(title)}</h3>
+        <button class="icon-btn dark" data-close aria-label="Fermer">${ico('x', 22)}</button>
+      </div>
+      <div class="sheet-body">${body}</div>
+      ${foot ? `<div class="sheet-foot">${foot}</div>` : ''}
+    </div>`;
+  $('#overlay').appendChild(wrap);
+  $$('[data-close]', wrap).forEach(b => b.addEventListener('click', closeSheet));
+  const onKey = e => { if (e.key === 'Escape') closeSheet(); };
+  document.addEventListener('keydown', onKey);
+  sheetCleanup = () => { wrap.remove(); document.removeEventListener('keydown', onKey); };
+  onMount?.(wrap);
+  $('.sheet-body button, .sheet-body input', wrap)?.focus?.({ preventScroll: true });
+}
+function closeSheet() { sheetCleanup?.(); sheetCleanup = null; }
+
+function confirmer({ title, message, danger = false, ok = 'Confirmer' }, onOk) {
+  openSheet({
+    title,
+    body: `<p style="margin:0;font-size:14.5px;color:var(--fg-2);line-height:1.6">${message}</p>`,
+    foot: `<div class="row" style="gap:8px">
+             <button class="btn btn-ghost" style="flex:1" data-close>Annuler</button>
+             <button class="btn ${danger ? 'btn-primary' : 'btn-dark'}" style="flex:1" id="cf-ok">${esc(ok)}</button>
+           </div>`,
+    onMount: w => $('#cf-ok', w).addEventListener('click', () => { closeSheet(); onOk(); }),
+  });
+}
+
+/* ---------- 6. CONNEXION ------------------------------------------------ */
+
+let pin = '';
+function viewLogin() {
+  $('#app').innerHTML = `
+  <div class="login">
+    ${FOND_CONNEXION ? `
+      <div class="login-fond" style="background-image:url('${FOND_CONNEXION}')" aria-hidden="true"></div>
+      <div class="login-voile" aria-hidden="true"></div>` : ''}
+    <div class="login-card">
+      ${LOGO_SDIS
+        ? `<img class="login-logo" src="${LOGO_SDIS}" width="120" height="120"
+               alt="Sapeurs-Pompiers du Haut-Rhin — Incendie et Secours">`
+        : `<div class="login-crest">${ico('flame', 30)}</div>`}
+      <h2>Kits VSAV</h2>
+      <p class="org">${ORG.cs} · ${ORG.service}</p>
+
+      <div class="pin-display" id="pin-dots" role="status" aria-label="Code d'accès">
+        ${Array.from({ length: longueurCode() }, () => '<i class="pin-dot"></i>').join('')}
+      </div>
+      <p id="pin-msg" class="err" style="justify-content:center;min-height:20px;margin:0 0 12px" role="alert"></p>
+
+      <div class="keypad">
+        ${[1,2,3,4,5,6,7,8,9].map(n => `<button data-k="${n}">${n}</button>`).join('')}
+        <button class="fn" data-k="clear" aria-label="Effacer tout">C</button>
+        <button data-k="0">0</button>
+        <button class="fn" data-k="del" aria-label="Corriger">${ico('back', 22)}</button>
+      </div>
+
+      ${demoEnLigne() ? `
+      <div class="demo-codes" style="background:var(--warn-bg);border-color:#FDE68A;color:var(--warn-fg)">
+        ${ico('alert', 14)} <b>Mode démo</b> — cette adresse n'est pas reliée à la base.
+        Les saisies resteront dans ce téléphone.
+      </div>` : ''}
+      ${(enLigne() || demoEnLigne()) ? '' : `
+      <div class="demo-codes">
+        ${ico('info', 14)} <b>Mode démo</b> — codes d'accès :<br>
+        Chef d'agrès <b>${esc(S.params.codeChef)}</b> ·
+        ${S.params.admins.map(a => `${esc(a.nom.split(' ').slice(-1)[0] || a.nom)} <b>${esc(a.code)}</b>`).join(' · ')}
+      </div>`}
+    </div>
+  </div>`;
+
+  $$('.keypad button').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.k;
+    haptic(8);
+    if (k === 'clear') pin = '';
+    else if (k === 'del') pin = pin.slice(0, -1);
+    else if (pin.length < longueurCode()) pin += k;
+    renderPin();
+    if (pin.length === longueurCode()) setTimeout(tryLogin, 140);
+  }));
+  renderPin();
+}
+
+function renderPin() {
+  $$('#pin-dots .pin-dot').forEach((d, i) => d.classList.toggle('on', i < pin.length));
+}
+
+/** Remet à zéro tout ce qu'un utilisateur a saisi : sur un téléphone partagé,
+ *  garder le nom ou le panier du précédent fausserait la saisie suivante.    */
+function reinitialiserFormulaires() {
+  panier = [];
+  formSortie = { nom:'', sis:'', motif:'INTERVENTION' };
+  formManuel = { type:'', numero:'' };
+  formEntree = { type:'', numero:'', peremption:'' };
+  ajoutsSession = [];
+  expanded.clear();
+  document.documentElement.style.setProperty('--bar-h', '0px');
+}
+
+/** Supabase impose 6 caractères minimum pour un mot de passe de compte. */
+const longueurCode = () => (enLigne() ? 6 : 4);
+
+function codeRefuse(message) {
+  const d = $('#pin-dots');
+  d.classList.add('shake');
+  $('#pin-msg').innerHTML = ico('alert', 15) + ' ' + esc(message);
+  haptic([40, 60, 40]);
+  setTimeout(() => {
+    pin = ''; renderPin(); d.classList.remove('shake');
+    $$('.keypad button').forEach(b => b.disabled = false);
+    $('#pin-msg').innerHTML = '';
+  }, message.length > 20 ? 2400 : 900);
+}
+
+async function tryLogin() {
+  if (!enLigne()) {
+    const admin = S.params.admins.find(a => a.code === pin);
+    if (admin) { reinitialiserFormulaires(); session = { nom: admin.nom, role: 'admin' }; pin = ''; go('stock'); return; }
+    if (pin === S.params.codeChef) { reinitialiserFormulaires(); session = { nom: '', role: 'chef' }; pin = ''; go('sortie'); return; }
+    return codeRefuse('Code incorrect');
+  }
+
+  $$('.keypad button').forEach(b => b.disabled = true);
+  $('#pin-msg').innerHTML = ico('refresh', 15) + ' Vérification…';
+  $('#pin-msg').style.color = 'var(--fg-3)';
+  try {
+    const s = await SB.connexion(pin);
+    if (!s) { $('#pin-msg').style.color = ''; return codeRefuse('Code incorrect'); }
+    reinitialiserFormulaires();
+    session = s;
+    await chargerDepuisSupabase();
+    pin = ''; $('#pin-msg').style.color = '';
+    go(session.role === 'admin' ? 'stock' : 'sortie');
+  } catch (e) {
+    $('#pin-msg').style.color = '';
+    codeRefuse(e.message || 'Connexion impossible');
+  }
+}
+
+function logout() {
+  confirmer({ title: 'Se déconnecter ?', message: 'Vous reviendrez à l\'écran de code d\'accès.', ok: 'Se déconnecter' },
+    async () => {
+      if (enLigne()) { await SB.deconnexion(); S = etatVide(); }
+      reinitialiserFormulaires();
+      session = null; render();
+    });
+}
+
+/* ---------- 7. COQUILLE DE L'APP ---------------------------------------- */
+
+const NAV_ADMIN = [
+  { id:'stock',     label:'Stock',      icon:'box'   },
+  { id:'sortie',    label:'Sortie',     icon:'out'   },
+  { id:'entree',    label:'Entrée',     icon:'in'    },
+  { id:'historique',label:'Historique', icon:'hist'  },
+  { id:'stats',     label:'Stats',      icon:'chart' },
+];
+
+const VIEWS = {
+  stock:      { title:'Stock des kits',      render: viewStock,      admin:true  },
+  sortie:     { title:'Sortie de kit',       render: viewSortie,     admin:false },
+  entree:     { title:'Entrée en stock',     render: viewEntree,     admin:true  },
+  historique: { title:'Historique',          render: viewHistorique, admin:true  },
+  stats:      { title:'Statistiques',        render: viewStats,      admin:true  },
+  params:     { title:'Paramètres',          render: viewParams,     admin:true  },
+};
+
+function go(r) { route = r; render(); window.scrollTo({ top: 0 }); }
+
+/** Hauteur réservée en bas de page pour la barre d'action collante. */
+function resetBarreHauteur() { document.documentElement.style.setProperty('--bar-h', '0px'); }
+
+function render() {
+  closeSheet();
+  resetBarreHauteur();
+  if (!session) return viewLogin();
+
+  const isAdmin = session.role === 'admin';
+  if (!isAdmin) route = 'sortie';
+  const v = VIEWS[route] || VIEWS.stock;
+  const alertes = nbAlertes();
+
+  $('#app').innerHTML = `
+  <div class="shell">
+    <header class="topbar">
+      <div class="topbar-in">
+        ${LOGO_SDIS
+          ? `<img class="crest-logo" src="${LOGO_SDIS}" width="42" height="42"
+                 alt="Sapeurs-Pompiers du Haut-Rhin">`
+          : `<div class="crest">${ico('flame', 22)}</div>`}
+        <div style="min-width:0">
+          <h1>${esc(v.title)}</h1>
+          <div class="sub">${ORG.service}</div>
+        </div>
+        <div class="spacer"></div>
+        ${isAdmin ? `<button class="icon-btn" id="btn-params" aria-label="Paramètres"
+                  ${route === 'params' ? 'aria-current="page"' : ''}>${ico('cog', 21)}</button>` : ''}
+        <button class="icon-btn" id="btn-logout" aria-label="Se déconnecter">${ico('logout', 21)}</button>
+      </div>
+    </header>
+    ${demoEnLigne() ? `
+    <div class="bandeau-demo" role="alert">${ico('alert',16)}
+      <span><b>Mode démo</b> — rien n'est enregistré pour le service.
+      Les saisies restent dans ce téléphone et ne sont vues par personne d'autre.</span>
+    </div>` : ''}
+    <main id="main"><div class="view"></div></main>
+  </div>
+  ${isAdmin ? `
+  <nav class="nav" aria-label="Navigation principale"><div class="nav-in">
+    ${NAV_ADMIN.map(n => `
+      <button data-go="${n.id}" ${route === n.id ? 'aria-current="page"' : ''}>
+        ${ico(n.icon, 21)}<span>${n.label}</span>
+        ${n.id === 'stock' && alertes ? `<span class="badge" aria-label="${alertes} alerte(s)">${alertes}</span>` : ''}
+      </button>`).join('')}
+  </div></nav>` : ''}`;
+
+  if (!isAdmin) { document.documentElement.style.setProperty('--nav-h', '0px'); }
+  else document.documentElement.style.setProperty('--nav-h', '62px');
+
+  $('#btn-logout').addEventListener('click', logout);
+  $('#btn-params')?.addEventListener('click', () => go('params'));
+  $$('[data-go]').forEach(b => b.addEventListener('click', () => { haptic(); go(b.dataset.go); }));
+
+  v.render($('.view'));
+}
+
+/* ---------- 8. VUE STOCK ------------------------------------------------ */
+
+let stockFiltre = 'tous';
+const expanded = new Set();
+
+function badgePer(kit) {
+  const s = perStatus(kit);
+  const ic = s.id === 'perime' ? 'alert' : s.id === 'proche' ? 'clock' : 'check-circle';
+  return `<span class="badge ${s.tone}">${ico(ic, 13)} ${fmtDate(kit.peremption)}</span>`;
+}
+
+function viewStock(el) {
+  const b = bilan();
+  el.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="k-label">${ico('box',13)} En stock</div>
+        <div class="k-val num">${b.total}<span style="font-size:15px;color:var(--fg-3)">/${b.cible}</span></div>
+        <div class="k-sub">kits présents</div></div>
+      <div class="kpi ${b.manque ? 'is-warn' : 'is-ok'}"><div class="k-label">${ico('inbox',13)} À recompléter</div>
+        <div class="k-val num">${b.manque}</div><div class="k-sub">${b.manque ? 'kits manquants' : 'dotation complète'}</div></div>
+      <div class="kpi ${b.perimes ? 'is-crit' : 'is-ok'}"><div class="k-label">${ico('alert',13)} Périmés</div>
+        <div class="k-val num">${b.perimes}</div><div class="k-sub">à retirer</div></div>
+      <div class="kpi ${b.proches ? 'is-warn' : ''}"><div class="k-label">${ico('clock',13)} &lt; ${S.params.alerteJours} j</div>
+        <div class="k-val num">${b.proches}</div><div class="k-sub">à surveiller</div></div>
+    </div>
+
+    <div class="section-title" style="margin-top:var(--s4)">
+      <span>Dotation par type</span><div class="spacer"></div>
+    </div>
+    <div class="seg" role="group" aria-label="Filtrer le stock" style="margin-bottom:var(--s3)">
+      ${[['tous','Tous'],['manque','À recompléter'],['peremption','Péremption']].map(([id,l]) =>
+        `<button data-f="${id}" aria-pressed="${stockFiltre===id}">${l}</button>`).join('')}
+    </div>
+    <div id="stock-list"></div>`;
+
+  $$('[data-f]', el).forEach(b2 => b2.addEventListener('click', () => { stockFiltre = b2.dataset.f; viewStock(el); }));
+  renderStockList($('#stock-list', el));
+}
+
+function renderStockList(host) {
+  let types = TYPES.slice();
+  if (stockFiltre === 'manque')     types = types.filter(t => stockType(t.id).length < dotation(t.id));
+  if (stockFiltre === 'peremption') types = types.filter(t => stockType(t.id).some(k => perStatus(k).id !== 'ok'));
+
+  if (!types.length) {
+    host.innerHTML = `<div class="empty card">${ico('check-circle',40)}
+      <strong>Rien à signaler</strong><p>Aucun type ne correspond à ce filtre.</p></div>`;
+    return;
+  }
+
+  host.innerHTML = types.map(t => {
+    const kits = stockType(t.id);
+    const dot = dotation(t.id), n = kits.length;
+    const manque = Math.max(0, dot - n);
+    const nPer = kits.filter(k => perStatus(k).id === 'perime').length;
+    const nProche = kits.filter(k => perStatus(k).id === 'proche').length;
+    const pct = dot ? Math.min(100, n / dot * 100) : 100;
+    const gClass = n === 0 ? 'none' : manque ? 'low' : '';
+    const isOpen = expanded.has(t.id);
+
+    const alertes = [];
+    if (manque) alertes.push(`<span class="badge warn">${ico('inbox',12)} ${manque} manquant${manque>1?'s':''}</span>`);
+    if (nPer)   alertes.push(`<span class="badge crit">${ico('alert',12)} ${nPer} périmé${nPer>1?'s':''}</span>`);
+    if (nProche)alertes.push(`<span class="badge warn">${ico('clock',12)} ${nProche} &lt; ${S.params.alerteJours} j</span>`);
+    if (!alertes.length) alertes.push(`<span class="badge ok">${ico('check',12)} Conforme</span>`);
+
+    return `
+    <div class="type-card">
+      <button class="type-head" data-t="${t.id}" aria-expanded="${isOpen}">
+        <span class="dot" style="background:${t.hue}"></span>
+        <span style="flex:1;min-width:0">
+          <span class="type-name">${t.label}</span>
+          <span class="type-meta chips" style="margin-top:4px">${alertes.join('')}</span>
+        </span>
+        <span class="type-right">
+          <span class="type-count num">${n}<small>/${dot}</small></span>
+          <span class="gauge ${gClass}"><i style="width:${pct}%"></i></span>
+        </span>
+        <span class="chev">${ico('chev-r',18)}</span>
+      </button>
+      ${isOpen ? (kits.length ? kits.map(k => {
+        const s = perStatus(k);
+        return `<div class="kit-row">
+          <span class="kit-no num">n°&nbsp;${esc(k.numero)}</span>
+          <span style="flex:1;min-width:0">
+            ${badgePer(k)}
+            <div class="kit-per">${s.id==='perime'?'Périmé ':'Périme '}${s.detail} · entré le ${fmtDate(k.entreLe)}</div>
+          </span>
+          <button class="btn btn-sm btn-ghost" data-out="${k.id}">${ico('out',15)} Sortir</button>
+        </div>`;
+      }).join('') : `<div class="kit-row" style="color:var(--fg-3);font-size:13.5px;font-weight:600">
+          ${ico('inbox',16)} Aucun kit de ce type en stock</div>`) : ''}
+    </div>`;
+  }).join('');
+
+  $$('[data-t]', host).forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.t;
+    expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+    renderStockList(host);
+  }));
+  $$('[data-out]', host).forEach(b => b.addEventListener('click', () => {
+    const k = S.kits.find(x => x.id === b.dataset.out);
+    if (!k) return;
+    ajouterAuPanier(k);
+    go('sortie');
+  }));
+}
+
+/* ---------- 9. VUE SORTIE ------------------------------------------------ */
+/* Chef d'agrès : scan de l'étiquette, ou saisie du type et du n° à la main.
+   Il ne voit jamais l'inventaire — il déclare ce qu'il a utilisé en intervention.
+   Admin : sélection depuis le stock, avec tri FEFO.                          */
+
+let panier = [];
+let formSortie = { nom:'', sis:'', motif:'INTERVENTION' };
+let formManuel = { type:'', numero:'' };
+
+function ajouterAuPanier(kit) {
+  if (panier.some(k => k.id === kit.id)) { toast('Ce kit est déjà dans la sortie'); return false; }
+  panier.push(kit); haptic(15); return true;
+}
+
+/** Noms proposés, selon l'accès utilisé :
+ *  – code chef d'agrès : l'effectif du CS (constante CHEFS), liste fermée ;
+ *  – code responsable VSAV : les deux responsables uniquement, cet accès ne
+ *    servant qu'à eux. « Un autre nom… » reste leur porte de sortie.         */
+function listeChefs() {
+  const noms = session.role === 'admin' ? S.params.admins.map(a => a.nom) : CHEFS;
+  return [...noms].sort((a, b) => a.localeCompare(b, 'fr'));
+}
+
+function viewSortie(el) {
+  const m = M[formSortie.motif];
+  const admin = session.role === 'admin';
+  const libelleNom = admin ? 'Responsable VSAV' : "Nom du chef d'agrès";
+  if (admin && !formSortie.nom) formSortie.nom = session.nom;
+
+  el.innerHTML = `
+    <div class="card pad">
+      <div class="field">
+        <label class="label" for="f-nom">${libelleNom} <span class="req">*</span></label>
+        <button class="inp" id="f-nom" style="display:flex;align-items:center;gap:8px;text-align:left">
+          <span style="flex:1;min-width:0;font-weight:${formSortie.nom ? '700' : '400'};
+                color:var(--${formSortie.nom ? 'fg' : 'fg-3'});overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            ${formSortie.nom ? esc(formSortie.nom) : 'Choisir dans la liste'}</span>
+          ${ico('chev-d', 18)}
+        </button>
+        <div class="err" id="e-nom" hidden></div>
+      </div>
+
+      <div class="field">
+        <label class="label">Motif de la sortie <span class="req">*</span></label>
+        <div class="chips" role="group" aria-label="Motif">
+          ${MOTIFS.map(x => `<button class="chip" data-m="${x.id}" aria-pressed="${x.id === formSortie.motif}">
+             <span class="dot" style="background:${x.color}"></span>${x.short}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="field" id="wrap-sis" ${m.needSis ? '' : 'hidden'}>
+        <label class="label" for="f-sis">N° d'intervention SIS <span class="req">*</span></label>
+        <input class="inp num" id="f-sis" inputmode="numeric" autocomplete="off" enterkeyhint="done"
+               placeholder="ex. 19272" value="${esc(formSortie.sis)}">
+        <div class="err" id="e-sis" hidden></div>
+        <p class="hint">Un seul numéro d'intervention pour tous les kits sortis ci-dessous.</p>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <span>Kits utilisés</span><div class="spacer"></div>
+      <button class="btn btn-sm btn-dark" id="b-scan">${ico('scan',16)} Scanner</button>
+    </div>
+
+    <div id="panier"></div>
+
+    ${admin ? `
+      <div class="section-title">Ajouter depuis le stock</div>
+      <div class="type-grid" id="grid-types"></div>`
+    : `
+      <div class="section-title">Ajouter manuellement</div>
+      <div class="card pad" id="manuel"></div>`}
+
+    <div class="stickybar" id="bar" hidden><div class="stickybar-in">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:800" id="bar-n"></div>
+        <div style="font-size:12px;color:var(--fg-3);font-weight:600" id="bar-s"></div>
+      </div>
+      <button class="btn btn-primary" id="b-valider">${ico('check',18)} Valider la sortie</button>
+    </div></div>`;
+
+  $('#f-nom', el).addEventListener('click', () => choisirChef(el));
+  $('#f-sis', el).addEventListener('input', e => {
+    formSortie.sis = e.target.value.replace(/[^\dA-Za-z\/-]/g, ''); e.target.value = formSortie.sis;
+  });
+  $$('[data-m]', el).forEach(b => b.addEventListener('click', () => {
+    formSortie.motif = b.dataset.m; haptic(); viewSortie(el);
+  }));
+  $('#b-scan', el).addEventListener('click', () => scannerPourSortie(el));
+  $('#b-valider', el).addEventListener('click', () => validerSortie(el));
+
+  renderPanier(el);
+  if (admin) renderGrilleTypes(el); else renderManuel(el);
+  majBarre();
+}
+
+/* --- Choix du chef d'agrès dans l'effectif ------------------------------- */
+function choisirChef(el) {
+  const noms = listeChefs();
+  openSheet({
+    title: session.role === 'admin' ? 'Responsable VSAV' : "Chef d'agrès",
+    body: `<div id="ch-liste">${noms.map(nom => `
+      <button class="picker-item" data-nom="${esc(nom)}" style="min-height:52px">
+        <span class="mv-ic in" style="background:var(--surface-2);color:var(--fg-3)">${ico('user',16)}</span>
+        <span style="flex:1;font-weight:700">${esc(nom)}</span>
+        ${nom === formSortie.nom ? `<span style="color:var(--ok)">${ico('check',18)}</span>` : ''}
+      </button>`).join('')}
+      ${session.role === 'admin' ? `
+      <button class="picker-item" id="ch-autre" style="min-height:52px;border-style:dashed">
+        <span class="mv-ic in" style="background:var(--surface-2);color:var(--fg-3)">${ico('plus',16)}</span>
+        <span style="flex:1;font-weight:700;color:var(--fg-2)">Un autre nom…</span>
+      </button>` : ''}</div>`,
+    onMount: w => {
+      $$('[data-nom]', w).forEach(b => b.addEventListener('click', () => {
+        formSortie.nom = b.dataset.nom; haptic(); closeSheet(); viewSortie(el);
+      }));
+      $('#ch-autre', w)?.addEventListener('click', () => {
+        $('#ch-liste', w).innerHTML = `
+          <label class="label" for="ch-libre">Nom du chef d'agrès</label>
+          <input class="inp" id="ch-libre" placeholder="NOM Prénom" autocomplete="off" enterkeyhint="done">
+          <p class="hint">À n'utiliser que si le nom ne figure pas dans la liste.</p>
+          <button class="btn btn-dark btn-block" id="ch-ok" style="margin-top:12px">${ico('check',18)} Valider</button>`;
+        const inp = $('#ch-libre', w);
+        const ok = () => {
+          const v = inp.value.trim();
+          if (v.length < 3) { toast('Nom trop court', 'err'); return; }
+          formSortie.nom = v; closeSheet(); viewSortie(el);
+        };
+        $('#ch-ok', w).addEventListener('click', ok);
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+        inp.focus();
+      });
+    },
+  });
+}
+
+/* --- Panier ------------------------------------------------------------- */
+function renderPanier(el) {
+  const host = $('#panier', el);
+  if (!panier.length) {
+    host.innerHTML = `<div class="empty card">${ico('out',36)}
+      <strong>Aucun kit sélectionné</strong>
+      <p>Scannez l'étiquette du kit utilisé${session.role === 'admin'
+        ? ', ou choisissez un type ci-dessous.' : ', ou ajoutez-le manuellement ci-dessous.'}<br>
+      Vous pouvez déclarer plusieurs kits en une seule fois.</p></div>`;
+    return;
+  }
+  host.innerHTML = panier.map(k => {
+    const t = T[k.type];
+    return `<div class="cart-item">
+      <span class="dot" style="background:${t.hue}"></span>
+      <span style="flex:1;min-width:0">
+        <div style="font-size:14.5px;font-weight:700">${t.label} · <span class="num">n° ${esc(k.numero)}</span></div>
+        <div style="font-size:12.5px;color:var(--fg-3);font-weight:600;display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:2px">
+          ${k.peremption ? `<span>Péremption ${fmtDate(k.peremption)}</span>` : ''}
+          ${k.horsInventaire ? `<span class="badge crit" style="font-size:10.5px">${ico('alert',11)} Hors inventaire</span>` : ''}
+        </div>
+      </span>
+      <button class="icon-btn dark" data-rm="${k.id}" aria-label="Retirer ce kit de la sortie">${ico('trash',18)}</button>
+    </div>`;
+  }).join('');
+  $$('[data-rm]', host).forEach(b => b.addEventListener('click', () => {
+    panier = panier.filter(k => k.id !== b.dataset.rm);
+    renderPanier(el);
+    if (session.role === 'admin') renderGrilleTypes(el); else renderManuel(el);
+    majBarre();
+  }));
+}
+
+/* --- Scan (les deux rôles) ---------------------------------------------- */
+function scannerPourSortie(el) {
+  ouvrirScanner({
+    titre: 'Scanner un kit utilisé',
+    onResult: r => {
+      if (!r.numero) { toast("Numéro de kit illisible sur ce code", 'err'); return false; }
+      const kit = enStock().find(k => k.numero === r.numero);
+      if (kit) {
+        if (!ajouterAuPanier(kit)) return true;
+        toast(`${T[kit.type].label} n° ${kit.numero} ajouté`, 'ok');
+        viewSortie(el); return true;
+      }
+      // Numéro absent de l'inventaire : on l'accepte mais on le signale.
+      const type = r.type || formManuel.type;
+      if (!type) {
+        toast(session.role === 'admin'
+          ? `Kit n° ${r.numero} introuvable en stock`
+          : `Kit n° ${r.numero} inconnu — ajoutez-le à la main ci-dessous`, 'err');
+        return false;
+      }
+      ajouterHorsInventaire(type, r.numero, r.peremption, el);
+      return true;
+    },
+  });
+}
+
+/* --- Saisie à la main (chef d'agrès) ------------------------------------ */
+function renderManuel(el) {
+  const host = $('#manuel', el); if (!host) return;
+  host.innerHTML = `
+    <div class="field">
+      <label class="label">Type de kit <span class="req">*</span></label>
+      <div class="type-grid" id="m-types">
+        ${TYPES.map(t => `<button class="type-pick" data-mt="${t.id}" aria-pressed="${formManuel.type === t.id}"
+            style="min-height:56px;justify-content:center">
+          <span class="row" style="gap:7px;width:100%">
+            <span class="dot" style="background:${t.hue}"></span><span style="flex:1">${t.label}</span>
+          </span></button>`).join('')}
+      </div>
+      <div class="err" id="e-mtype" hidden></div>
+    </div>
+    <div class="field">
+      <label class="label" for="m-num">Numéro du kit <span class="req">*</span></label>
+      <input class="inp num" id="m-num" inputmode="numeric" autocomplete="off" enterkeyhint="done"
+             placeholder="ex. 25781" value="${esc(formManuel.numero)}">
+      <div class="err" id="e-mnum" hidden></div>
+      <p class="hint">Le numéro imprimé sur l'étiquette, au-dessus de la date de péremption.</p>
+    </div>
+    <button class="btn btn-ghost btn-block" id="m-ok">${ico('plus',18)} Ajouter ce kit</button>`;
+
+  $$('[data-mt]', host).forEach(b => b.addEventListener('click', () => {
+    formManuel.type = b.dataset.mt; haptic(); renderManuel(el); $('#m-num', el).focus();
+  }));
+  const inp = $('#m-num', host);
+  inp.addEventListener('input', e => {
+    formManuel.numero = e.target.value.replace(/[^\dA-Za-z\/-]/g, ''); e.target.value = formManuel.numero;
+  });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') ajouterManuel(el); });
+  $('#m-ok', host).addEventListener('click', () => ajouterManuel(el));
+}
+
+function ajouterManuel(el) {
+  let ok = true;
+  const setErr = (id, msg) => {
+    const e = $('#e-' + id); if (!e) return;
+    if (msg) { e.innerHTML = ico('alert',14) + ' ' + msg; e.hidden = false; ok = false; } else e.hidden = true;
+  };
+  setErr('mtype', formManuel.type ? '' : 'Choisissez le type de kit');
+  setErr('mnum',  formManuel.numero.trim() ? '' : 'Saisissez le numéro du kit');
+  if (!ok) { haptic([30,50,30]); return; }
+
+  const type = formManuel.type, num = formManuel.numero.trim();
+  const reset = () => { formManuel.numero = ''; renderManuel(el); $('#m-num', el).focus(); };
+
+  const memeType = enStock().find(k => k.numero === num && k.type === type);
+  if (memeType) {
+    if (ajouterAuPanier(memeType)) toast(`${T[type].label} n° ${num} ajouté`, 'ok');
+    renderPanier(el); reset(); majBarre(); return;
+  }
+
+  const autreType = enStock().find(k => k.numero === num);
+  if (autreType) {
+    confirmer({
+      title: 'Type différent',
+      message: `Le kit n° <b>${esc(num)}</b> est enregistré en stock comme
+                <b>${T[autreType.type].label}</b>, pas comme ${T[type].label}.<br>
+                Utiliser le kit enregistré ?`,
+      ok: 'Utiliser ' + T[autreType.type].label,
+    }, () => {
+      ajouterAuPanier(autreType); renderPanier(el); reset(); majBarre();
+    });
+    return;
+  }
+
+  confirmer({
+    title: 'Kit absent de l\'inventaire', danger: true, ok: 'Déclarer quand même',
+    message: `Aucun kit <b>${T[type].label} n° ${esc(num)}</b> n'est enregistré en stock.<br>
+              La sortie sera enregistrée et signalée comme <b>hors inventaire</b> aux responsables VSAV.`,
+  }, () => { ajouterHorsInventaire(type, num, '', el); reset(); });
+}
+
+/** Kit déclaré alors qu'il n'est pas dans l'inventaire : accepté mais signalé. */
+function ajouterHorsInventaire(type, numero, peremption, el) {
+  if (panier.some(k => k.numero === numero && k.type === type)) {
+    toast('Ce kit est déjà dans la sortie'); return;
+  }
+  panier.push({ id: 'hors-' + uid(), type, numero, peremption: peremption || '', horsInventaire: true });
+  haptic(15);
+  toast(`${T[type].label} n° ${numero} déclaré hors inventaire`);
+  renderPanier(el); majBarre();
+}
+
+/* --- Sélection depuis le stock (admin) ---------------------------------- */
+function renderGrilleTypes(el) {
+  const host = $('#grid-types', el); if (!host) return;
+  host.innerHTML = TYPES.map(t => {
+    const dispo = stockType(t.id).filter(k => !panier.some(p => p.id === k.id));
+    const urgent = dispo.filter(k => perStatus(k).id !== 'ok').length;
+    return `<button class="type-pick" data-pick="${t.id}" ${dispo.length ? '' : 'disabled'}>
+      <span class="row" style="gap:6px;width:100%">
+        <span class="dot" style="background:${t.hue}"></span>
+        <span style="flex:1">${t.label}</span>
+      </span>
+      <span class="tp-sub">${dispo.length ? `${dispo.length} dispo${urgent ? ` · ${urgent} à sortir en priorité` : ''}` : 'Aucun en stock'}</span>
+    </button>`;
+  }).join('');
+  $$('[data-pick]', host).forEach(b => b.addEventListener('click', () => choisirKit(b.dataset.pick, el)));
+}
+
+/** Sélecteur de n° de kit — trié FEFO (péremption la plus proche en premier). */
+function choisirKit(typeId, el) {
+  const t = T[typeId];
+  const dispo = stockType(typeId).filter(k => !panier.some(p => p.id === k.id));
+  openSheet({
+    title: `${t.label} — choisir le n° de kit`,
+    body: dispo.map((k, i) => {
+      const s = perStatus(k);
+      return `<button class="picker-item" data-k="${k.id}">
+        <span style="flex:1;min-width:0">
+          <div class="row" style="gap:8px">
+            <span class="kit-no num" style="font-size:16px">n° ${esc(k.numero)}</span>
+            ${i === 0 ? `<span class="fefo">${ico('bolt',12)} À sortir en 1er</span>` : ''}
+          </div>
+          <div style="margin-top:5px">${badgePer(k)}</div>
+        </span>
+        ${ico('chev-r',18)}
+      </button>`;
+    }).join('') || `<div class="empty">${ico('inbox',34)}<strong>Aucun kit disponible</strong>
+        <p>Tous les kits de ce type sont déjà dans la sortie en cours.</p></div>`,
+    foot: `<p class="hint" style="margin:0">${ico('info',13)} Les kits sont triés par date de péremption : sortez toujours le premier de la liste.</p>`,
+    onMount: w => $$('[data-k]', w).forEach(b => b.addEventListener('click', () => {
+      const kit = S.kits.find(x => x.id === b.dataset.k);
+      ajouterAuPanier(kit); closeSheet();
+      renderPanier(el); renderGrilleTypes(el); majBarre();
+    })),
+  });
+}
+
+/* --- Barre d'action et validation --------------------------------------- */
+function majBarre() {
+  const bar = $('#bar'); if (!bar) return;
+  bar.hidden = panier.length === 0;
+  document.documentElement.style.setProperty('--bar-h', panier.length ? '76px' : '0px');
+  if (!panier.length) return;
+  const parType = {};
+  panier.forEach(k => parType[k.type] = (parType[k.type] || 0) + 1);
+  $('#bar-n').textContent = `${panier.length} kit${panier.length > 1 ? 's' : ''} à sortir`;
+  $('#bar-s').textContent = Object.entries(parType).map(([t, n]) => `${T[t].label}${n > 1 ? ` ×${n}` : ''}`).join(' · ');
+}
+
+function validerSortie(el) {
+  const m = M[formSortie.motif];
+  let ok = true;
+  const setErr = (id, msg) => {
+    const e = $('#e-' + id), i = $('#f-' + id);
+    if (msg) { e.innerHTML = ico('alert',14) + ' ' + msg; e.hidden = false; i.setAttribute('aria-invalid','true'); ok = false; }
+    else { e.hidden = true; i.removeAttribute('aria-invalid'); }
+  };
+  setErr('nom', formSortie.nom.trim().length < 3
+    ? (session.role === 'admin' ? 'Indiquez le responsable VSAV' : "Indiquez le nom du chef d'agrès")
+    : '');
+  if (m.needSis) setErr('sis', formSortie.sis.trim() ? '' : "Le n° d'intervention SIS est obligatoire");
+  if (!ok) { $('[aria-invalid="true"]', el)?.focus(); haptic([30,50,30]); return; }
+  if (!panier.length) { toast('Sélectionnez au moins un kit', 'err'); return; }
+
+  const btn = $('#b-valider');
+  btn.disabled = true; btn.innerHTML = ico('refresh',18) + ' Enregistrement…';
+
+  API.sortie({
+    lignes: panier.map(k => ({ id: k.horsInventaire ? null : k.id, type: k.type,
+                               numero: k.numero, peremption: k.peremption || '' })),
+    nom: formSortie.nom.trim(),
+    motif: formSortie.motif,
+    intervention: m.needSis ? formSortie.sis.trim() : '',
+  }).then(res => {
+    const n = res?.n ?? panier.length;
+    // Le nom du chef est remis à zéro après chaque validation : sur un téléphone
+    // partagé, garder le nom précédent fausserait la sortie suivante.
+    panier = []; formManuel = { type:'', numero:'' };
+    formSortie = { nom: session.role === 'admin' ? session.nom : '', sis:'', motif:'INTERVENTION' };
+    haptic([15, 40, 15]);
+    if (n) toast(`${n} kit${n > 1 ? 's' : ''} sorti${n > 1 ? 's' : ''} du stock`, 'ok');
+    if (res?.dejaSortis) {
+      const d = res.dejaSortis;
+      toast(`${d} kit${d > 1 ? 's' : ''} déjà sorti${d > 1 ? 's' : ''} par quelqu'un d'autre`, 'err');
+    }
+    render();
+  }).catch(e => {
+    btn.disabled = false; btn.innerHTML = ico('check',18) + ' Valider la sortie';
+    toast(e.message || "Erreur lors de l'enregistrement", 'err');
+  });
+}
+
+/* ---------- 10. VUE ENTRÉE EN STOCK (admin) ----------------------------- */
+/* L'étiquette porte les trois informations (n°, péremption, type) : le scan est
+   le chemin principal, la saisie manuelle reste le secours.                  */
+
+let formEntree = { type:'', numero:'', peremption:'' };
+let ajoutsSession = [];
+
+function viewEntree(el) {
+  el.innerHTML = `
+    <div class="card pad" style="background:linear-gradient(160deg,#0F172A,#1E293B);border:0">
+      <div class="row" style="gap:12px;align-items:flex-start">
+        <span style="width:44px;height:44px;border-radius:12px;background:#ffffff1f;color:#fff;
+              display:grid;place-items:center;flex:none">${ico('scan',24)}</span>
+        <div style="flex:1;min-width:0;color:#fff">
+          <div style="font-size:16px;font-weight:800;letter-spacing:-.01em">Scanner l'étiquette</div>
+          <div style="font-size:13px;color:#ffffffb8;font-weight:500;margin-top:2px;line-height:1.45">
+            Le n° de kit, la date de péremption et le type sont lus d'un seul coup.
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-block" id="b-scan-e"
+              style="background:#fff;color:var(--fg);margin-top:14px">${ico('scan',19)} Scanner un kit</button>
+    </div>
+
+    <div class="section-title">
+      <span>Ou ajouter manuellement</span><div class="spacer"></div>
+    </div>
+
+    <div class="card pad">
+      <div class="field">
+        <label class="label">Type de kit <span class="req">*</span></label>
+        <div class="type-grid" id="e-types"></div>
+        <div class="err" id="e-type" hidden></div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="f-numero">Numéro du kit <span class="req">*</span></label>
+        <input class="inp num" id="f-numero" inputmode="numeric" autocomplete="off"
+               placeholder="ex. 25731" value="${esc(formEntree.numero)}">
+        <div class="err" id="e-numero" hidden></div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="f-per">Date de péremption <span class="req">*</span></label>
+        <input class="inp" id="f-per" type="date" value="${esc(formEntree.peremption)}">
+        <div class="err" id="e-per" hidden></div>
+      </div>
+
+      <button class="btn btn-primary btn-block" id="b-ajouter">${ico('plus',19)} Ajouter au stock</button>
+    </div>
+
+    <div id="recap"></div>`;
+
+  renderTypesEntree(el);
+  $('#f-numero', el).addEventListener('input', e => {
+    formEntree.numero = e.target.value.replace(/[^\dA-Za-z\/-]/g, ''); e.target.value = formEntree.numero;
+  });
+  $('#f-per', el).addEventListener('change', e => formEntree.peremption = e.target.value);
+  $('#b-scan-e', el).addEventListener('click', () => scannerPourEntree(el));
+  $('#b-ajouter', el).addEventListener('click', () => ajouterKit(el));
+  renderRecap(el);
+}
+
+function renderTypesEntree(el) {
+  const host = $('#e-types', el); if (!host) return;
+  host.innerHTML = TYPES.map(t => {
+    const n = stockType(t.id).length, d = dotation(t.id);
+    return `<button class="type-pick" data-et="${t.id}" aria-pressed="${formEntree.type === t.id}">
+      <span class="row" style="gap:6px;width:100%">
+        <span class="dot" style="background:${t.hue}"></span><span style="flex:1">${t.label}</span>
+      </span>
+      <span class="tp-sub">${n}/${d} en stock${n < d ? ` · ${d - n} à compléter` : ''}</span>
+    </button>`;
+  }).join('');
+  $$('[data-et]', host).forEach(b => b.addEventListener('click', () => {
+    formEntree.type = b.dataset.et; haptic(); renderTypesEntree(el); $('#f-numero', el).focus();
+  }));
+}
+
+/* --- Scan puis confirmation --------------------------------------------- */
+function scannerPourEntree(el) {
+  ouvrirScanner({
+    titre: "Scanner l'étiquette du kit",
+    onResult: r => { confirmerEtiquette(r, el); return true; },
+  });
+}
+
+/** Écran de contrôle après lecture : rien n'entre en stock sans validation. */
+function confirmerEtiquette(r, el) {
+  const lu = { type: r.type || '', numero: r.numero || '', peremption: r.peremption || '' };
+  const complet = lu.type && lu.numero && lu.peremption;
+  const manquants = [!lu.type && 'le type', !lu.numero && 'le numéro', !lu.peremption && 'la date de péremption']
+                      .filter(Boolean);
+
+  openSheet({
+    title: complet ? 'Étiquette lue' : 'Lecture incomplète',
+    body: `
+      ${complet
+        ? `<div class="badge ok" style="margin-bottom:14px">${ico('check-circle',13)} Les trois informations ont été lues</div>`
+        : `<div class="badge warn" style="margin-bottom:14px">${ico('alert',13)} Complétez ${manquants.join(' et ')}</div>`}
+
+      <div class="field">
+        <label class="label" for="c-type">Type de kit <span class="req">*</span></label>
+        <select class="inp" id="c-type">
+          <option value="">— à choisir —</option>
+          ${TYPES.map(t => `<option value="${t.id}" ${t.id === lu.type ? 'selected' : ''}>${t.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label class="label" for="c-num">Numéro du kit <span class="req">*</span></label>
+        <input class="inp num" id="c-num" inputmode="numeric" autocomplete="off"
+               placeholder="ex. 25731" value="${esc(lu.numero)}">
+      </div>
+      <div class="field">
+        <label class="label" for="c-per">Date de péremption <span class="req">*</span></label>
+        <input class="inp" id="c-per" type="date" value="${esc(lu.peremption)}">
+        <div id="c-alerte"></div>
+      </div>
+
+      <details style="margin-top:4px">
+        <summary style="font-size:12.5px;font-weight:700;color:var(--fg-3);cursor:pointer;min-height:32px;
+                 display:flex;align-items:center;gap:6px">${ico('info',14)} Code lu par le scanner</summary>
+        <div style="margin-top:8px;padding:10px;background:var(--surface-2);border:1px solid var(--border);
+             border-radius:var(--r-sm);font-size:12px;word-break:break-all;color:var(--fg-2)">${esc(r.raw)}</div>
+        <p class="hint">Si le décodage tombe à côté, envoyez cette chaîne à SL Agence pour caler la lecture.</p>
+      </details>`,
+    foot: `<div class="row" style="gap:8px">
+             <button class="btn btn-ghost" style="flex:1" data-close>Annuler</button>
+             <button class="btn btn-primary" style="flex:1.3" id="c-ok">${ico('plus',18)} Ajouter</button>
+           </div>`,
+    onMount: w => {
+      const maj = () => {
+        const v = $('#c-per', w).value;
+        const zone = $('#c-alerte', w);
+        if (!v) { zone.innerHTML = ''; return; }
+        const s = perStatus({ peremption: v });
+        zone.innerHTML = `<div style="margin-top:8px"><span class="badge ${s.tone}">
+          ${ico(s.id === 'perime' ? 'alert' : s.id === 'proche' ? 'clock' : 'check-circle', 13)}
+          ${s.label}${s.detail ? ' · ' + s.detail : ''}</span></div>`;
+      };
+      $('#c-per', w).addEventListener('change', maj); maj();
+
+      $('#c-ok', w).addEventListener('click', () => {
+        const type = $('#c-type', w).value;
+        const numero = $('#c-num', w).value.trim();
+        const peremption = $('#c-per', w).value;
+        if (!type || !numero || !peremption) { toast('Complétez les trois champs', 'err'); haptic([30,50,30]); return; }
+        formEntree = { type, numero, peremption };
+        closeSheet();
+        ajouterKit(el, { enchainer: true });
+      });
+    },
+  });
+}
+
+function ajouterKit(el, opts = {}) {
+  let ok = true;
+  const setErr = (id, msg) => {
+    const e = $('#e-' + id); if (!e) { if (msg) ok = false; return; }
+    if (msg) { e.innerHTML = ico('alert',14) + ' ' + msg; e.hidden = false; ok = false; }
+    else e.hidden = true;
+  };
+  setErr('type',   formEntree.type ? '' : 'Choisissez le type de kit');
+  setErr('numero', formEntree.numero.trim() ? '' : 'Saisissez ou scannez le numéro du kit');
+  setErr('per',    formEntree.peremption ? '' : 'Saisissez la date de péremption');
+  if (!ok) { haptic([30,50,30]); return; }
+
+  const doublon = enStock().find(k => k.numero === formEntree.numero.trim());
+  const finaliser = () => {
+    const snapshot = { ...formEntree, numero: formEntree.numero.trim() };
+    API.entree({ ...snapshot, par: session.nom }).then(kit => {
+      ajoutsSession.unshift(kit);
+      const per = perStatus(kit);
+      formEntree = { type: snapshot.type, numero:'', peremption:'' };   // le type reste : saisie en série
+      haptic([15,40,15]);
+      toast(`${T[kit.type].label} n° ${kit.numero} ajouté`, 'ok');
+      if (per.id === 'perime') toast('Attention : ce kit est déjà périmé', 'err');
+      viewEntree(el);
+      if (opts.enchainer) proposerSuivant(el);
+      else $('#f-numero', el).focus();
+    }).catch(e => toast(e.message || 'Erreur', 'err'));
+  };
+
+  if (doublon) {
+    confirmer({
+      title: 'Numéro déjà en stock',
+      message: `Le kit n° <b>${esc(doublon.numero)}</b> (${T[doublon.type].label}, péremption ${fmtDate(doublon.peremption)})
+                est déjà enregistré en stock. Voulez-vous quand même l'ajouter ?`,
+      danger: true, ok: 'Ajouter quand même',
+    }, finaliser);
+    return;
+  }
+  finaliser();
+}
+
+/** Réappro en série : on enchaîne les étiquettes sans repasser par le menu. */
+function proposerSuivant(el) {
+  const bandeau = document.createElement('div');
+  bandeau.className = 'stickybar';
+  bandeau.innerHTML = `<div class="stickybar-in">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:800">${ajoutsSession.length} kit${ajoutsSession.length > 1 ? 's' : ''} ajouté${ajoutsSession.length > 1 ? 's' : ''}</div>
+        <div style="font-size:12px;color:var(--fg-3);font-weight:600">Enchaînez avec l'étiquette suivante</div>
+      </div>
+      <button class="btn btn-dark" id="sv-scan">${ico('scan',18)} Kit suivant</button>
+      <button class="icon-btn dark" id="sv-fin" aria-label="Terminer la série">${ico('x',20)}</button>
+    </div>`;
+  $('#overlay').appendChild(bandeau);
+  document.documentElement.style.setProperty('--bar-h', '76px');
+  const fermer = () => { bandeau.remove(); document.documentElement.style.setProperty('--bar-h', '0px'); };
+  $('#sv-fin', bandeau).addEventListener('click', fermer);
+  $('#sv-scan', bandeau).addEventListener('click', () => { fermer(); scannerPourEntree(el); });
+}
+
+function renderRecap(el) {
+  const host = $('#recap', el);
+  if (!ajoutsSession.length) { host.innerHTML = ''; return; }
+  host.innerHTML = `
+    <div class="section-title"><span>Ajoutés à l'instant</span><div class="spacer"></div>
+      <span class="badge neutral num">${ajoutsSession.length}</span></div>
+    <div class="card">${ajoutsSession.map(k => {
+      const t = T[k.type];
+      return `<div class="kit-row" style="background:var(--surface)">
+        <span class="dot" style="background:${t.hue}"></span>
+        <span style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700">${t.label} · <span class="num">n° ${esc(k.numero)}</span></div>
+          <div class="kit-per">Péremption ${fmtDate(k.peremption)}</div>
+        </span>
+        ${badgePer(k)}
+        <button class="icon-btn dark" data-undo="${k.id}" aria-label="Annuler cet ajout">${ico('trash',17)}</button>
+      </div>`;
+    }).join('')}</div>`;
+  $$('[data-undo]', host).forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.undo;
+    confirmer({ title:'Annuler cet ajout ?', message:'Le kit sera retiré du stock et de l\'historique.', danger:true, ok:'Annuler l\'ajout' },
+      () => { API.supprimerKit(id).then(() => { ajoutsSession = ajoutsSession.filter(k => k.id !== id); toast('Ajout annulé'); viewEntree(el); }); });
+  }));
+}
+
+/* ---------- 11. VUE HISTORIQUE (admin) ---------------------------------- */
+
+let histF = { periode:'90', sens:'tous', type:'tous', q:'' };
+
+function filtrerMouvements() {
+  let mv = mouvements();
+  if (histF.periode !== 'tout') {
+    const lim = new Date(); lim.setDate(lim.getDate() - +histF.periode);
+    mv = mv.filter(m => new Date(m.ts) >= lim);
+  }
+  if (histF.sens !== 'tous') mv = mv.filter(m => m.sens === histF.sens);
+  if (histF.type !== 'tous') mv = mv.filter(m => m.type === histF.type);
+  const q = histF.q.trim().toLowerCase();
+  if (q) mv = mv.filter(m => (m.numero + ' ' + m.par + ' ' + (m.intervention || '')).toLowerCase().includes(q));
+  return mv;
+}
+
+function viewHistorique(el) {
+  el.innerHTML = `
+    <div class="card pad" style="padding:var(--s3)">
+      <div class="inp-group" style="margin-bottom:var(--s2)">
+        <input class="inp" id="h-q" type="search" placeholder="N° de kit, intervention, nom…" value="${esc(histF.q)}">
+        <button class="btn btn-soft" id="h-export" style="padding:0 14px" aria-label="Exporter en CSV">${ico('download',18)}</button>
+      </div>
+      <div class="seg" role="group" aria-label="Période" style="margin-bottom:var(--s2)">
+        ${[['30','30 j'],['90','3 mois'],['365','12 mois'],['tout','Tout']].map(([id,l]) =>
+          `<button data-p="${id}" aria-pressed="${histF.periode===id}">${l}</button>`).join('')}
+      </div>
+      <div class="chips">
+        ${[['tous','Tous les mouvements'],['SORTIE','Sorties'],['ENTREE','Entrées']].map(([id,l]) =>
+          `<button class="chip" data-s="${id}" aria-pressed="${histF.sens===id}">${l}</button>`).join('')}
+        <button class="chip" id="h-type" aria-pressed="${histF.type!=='tous'}">
+          ${histF.type === 'tous' ? ico('filter',14) + ' Tous les types'
+            : `<span class="dot" style="background:${T[histF.type].hue}"></span>${T[histF.type].label}`}
+        </button>
+      </div>
+    </div>
+    <div id="h-list"></div>`;
+
+  let deb;
+  $('#h-q', el).addEventListener('input', e => {
+    clearTimeout(deb); const v = e.target.value;
+    deb = setTimeout(() => { histF.q = v; renderHistList($('#h-list', el)); }, 220);
+  });
+  $$('[data-p]', el).forEach(b => b.addEventListener('click', () => { histF.periode = b.dataset.p; viewHistorique(el); }));
+  $$('[data-s]', el).forEach(b => b.addEventListener('click', () => { histF.sens = b.dataset.s; viewHistorique(el); }));
+  $('#h-type', el).addEventListener('click', () => openSheet({
+    title: 'Filtrer par type de kit',
+    body: `<div class="stack">
+      <button class="picker-item" data-ht="tous"><span style="flex:1">Tous les types</span>${ico('chev-r',18)}</button>
+      ${TYPES.map(t => `<button class="picker-item" data-ht="${t.id}">
+        <span class="dot" style="background:${t.hue}"></span><span style="flex:1">${t.label}</span>${ico('chev-r',18)}</button>`).join('')}
+    </div>`,
+    onMount: w => $$('[data-ht]', w).forEach(b => b.addEventListener('click', () => {
+      histF.type = b.dataset.ht; closeSheet(); viewHistorique(el);
+    })),
+  }));
+  $('#h-export', el).addEventListener('click', exportCSV);
+  renderHistList($('#h-list', el));
+}
+
+function renderHistList(host) {
+  const mv = filtrerMouvements();
+  if (!mv.length) {
+    host.innerHTML = `<div class="empty card">${ico('search',38)}
+      <strong>Aucun mouvement</strong><p>Aucun résultat pour ces filtres.</p></div>`;
+    return;
+  }
+  const jours = {};
+  mv.slice(0, 400).forEach(m => (jours[dayKey(m.ts)] ||= []).push(m));
+
+  host.innerHTML = `<p class="hint" style="margin:12px 2px 0">${mv.length} mouvement${mv.length>1?'s':''}${mv.length>400?' · 400 affichés':''}</p>`
+  + Object.entries(jours).map(([j, list]) => `
+    <div class="day-head"><h4>${jourLabel(j)}</h4><span>${list.length} mvt${list.length>1?'s':''}</span></div>
+    <div class="card list">${list.map(m => {
+      const t = T[m.type], mo = m.motif ? M[m.motif] : null;
+      const sortie = m.sens === 'SORTIE';
+      return `<div class="mv">
+        <span class="mv-ic ${sortie ? 'out' : 'in'}">${ico(sortie ? 'out' : 'in', 17)}</span>
+        <span class="mv-main">
+          <div class="mv-t"><span class="dot" style="background:${t.hue};display:inline-block;margin-right:6px"></span>${t.label} · <span class="num">n° ${esc(m.numero)}</span></div>
+          <div class="mv-s">
+            <span>${ico('user',12)} ${esc(m.par)}</span>
+            ${mo ? `<span style="color:${mo.color};font-weight:700">${mo.short}</span>` : '<span style="color:var(--ok);font-weight:700">Entrée en stock</span>'}
+            ${m.horsInventaire ? `<span class="badge crit" style="font-size:10.5px">${ico('alert',11)} Hors inventaire</span>` : ''}
+            ${m.intervention ? `<span>${ico('bolt',12)} SIS ${esc(m.intervention)}</span>` : ''}
+            ${sortie && m.joursStock >= 0 ? `<span>${ico('clock',12)} ${m.joursStock} j en stock</span>` : ''}
+            ${m.peremption ? `<span>${ico('calendar',12)} pér. ${fmtDate(m.peremption)}</span>` : ''}
+          </div>
+        </span>
+        <span class="mv-time num">${fmtTime(m.ts)}</span>
+      </div>`;
+    }).join('')}</div>`).join('');
+}
+
+function exportCSV() {
+  const mv = filtrerMouvements();
+  const sep = ';';
+  const lignes = [['Horodateur','Sens','Nom','Type de KIT','Numéro du KIT','Date de péremption','Motif','N° intervention SIS','Jours en stock','Hors inventaire'].join(sep)];
+  mv.forEach(m => lignes.push([
+    new Date(m.ts).toLocaleString('fr-FR'), m.sens, m.par, T[m.type].label, m.numero,
+    fmtDate(m.peremption), m.motif ? M[m.motif].label : '', m.intervention || '',
+    m.sens === 'SORTIE' && m.joursStock >= 0 ? m.joursStock : '',
+    m.horsInventaire ? 'OUI' : '',
+  ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(sep)));
+
+  const blob = new Blob(['﻿' + lignes.join('\r\n')], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `kits-vsav-${todayISO()}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+  toast(`${mv.length} mouvements exportés`, 'ok');
+}
+
+/* ---------- 12. VUE STATISTIQUES (admin) -------------------------------- */
+
+let statsMois = 12;
+
+function derniersMois(n) {
+  const out = []; const d = new Date(); d.setDate(1);
+  for (let i = n - 1; i >= 0; i--) {
+    const x = new Date(d); x.setMonth(x.getMonth() - i);
+    out.push(`${x.getFullYear()}-${pad2(x.getMonth() + 1)}`);
+  }
+  return out;
+}
+
+function viewStats(el) {
+  const mois = derniersMois(statsMois);
+  const debut = mois[0] + '-01';
+  const sorties = mouvements().filter(m => m.sens === 'SORTIE' && m.ts.slice(0,10) >= debut);
+
+  const parMois  = Object.fromEntries(mois.map(m => [m, 0]));
+  const parType  = Object.fromEntries(TYPES.map(t => [t.id, 0]));
+  const parMotif = Object.fromEntries(MOTIFS.map(m => [m.id, 0]));
+  let sommeJours = 0, nJours = 0;
+  sorties.forEach(m => {
+    const k = monthKey(m.ts); if (k in parMois) parMois[k]++;
+    parType[m.type]++; parMotif[m.motif]++;
+    if (m.joursStock >= 0) { sommeJours += m.joursStock; nJours++; }
+  });
+
+  const nbInter  = parMotif.INTERVENTION;
+  const nbPerime = parMotif.PERIME;
+  const total    = sorties.length;
+  const tauxPer  = total ? Math.round(nbPerime / total * 100) : 0;
+  const moyMois  = (total / statsMois).toFixed(1).replace('.', ',');
+  const dureeMoy = nJours ? Math.round(sommeJours / nJours) : 0;
+
+  const st = enStock();
+  const cptPer = { ok:0, proche:0, perime:0 };
+  st.forEach(k => cptPer[perStatus(k).id]++);
+
+  el.innerHTML = `
+    <div class="seg" role="group" aria-label="Période d'analyse" style="margin-bottom:var(--s3)">
+      ${[[6,'6 mois'],[12,'12 mois'],[24,'24 mois']].map(([n,l]) =>
+        `<button data-sm="${n}" aria-pressed="${statsMois===n}">${l}</button>`).join('')}
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="k-label">${ico('out',13)} Sorties</div>
+        <div class="k-val num">${total}</div><div class="k-sub">${moyMois} / mois en moyenne</div></div>
+      <div class="kpi is-ok"><div class="k-label">${ico('bolt',13)} Interventions</div>
+        <div class="k-val num">${nbInter}</div><div class="k-sub">${total ? Math.round(nbInter/total*100) : 0} % des sorties</div></div>
+      <div class="kpi ${tauxPer > 15 ? 'is-crit' : 'is-warn'}"><div class="k-label">${ico('alert',13)} Périmés</div>
+        <div class="k-val num">${nbPerime}</div><div class="k-sub">${tauxPer} % de perte</div></div>
+      <div class="kpi"><div class="k-label">${ico('clock',13)} Rotation</div>
+        <div class="k-val num">${dureeMoy}<span style="font-size:15px;color:var(--fg-3)"> j</span></div>
+        <div class="k-sub">durée moyenne en stock</div></div>
+    </div>
+
+    <div class="section-title">Consommation mensuelle</div>
+    <div class="card pad"><div class="chart-wrap" id="ch-mois"></div>
+      <p class="hint" style="margin-top:10px">Nombre de kits sortis du stock, tous motifs confondus.</p></div>
+
+    <div class="section-title">Consommation par type de kit</div>
+    <div class="card pad" id="ch-type"></div>
+
+    <div class="section-title">Motifs de sortie</div>
+    <div class="card pad" id="ch-motif"></div>
+
+    <div class="section-title">Péremption du stock actuel</div>
+    <div class="card pad" id="ch-per"></div>
+
+    <div class="section-title">Détail par type</div>
+    <div class="card pad" style="overflow-x:auto"><table class="data">
+      <thead><tr><th>Type</th><th class="n">Sorties</th><th class="n">En stock</th><th class="n">Dotation</th><th class="n">Écart</th></tr></thead>
+      <tbody>${TYPES.map(t => {
+        const n = stockType(t.id).length, d = dotation(t.id), e = n - d;
+        return `<tr>
+          <td><span class="dot" style="background:${t.hue};display:inline-block;margin-right:7px"></span>${t.label}</td>
+          <td class="n">${parType[t.id]}</td><td class="n">${n}</td><td class="n">${d}</td>
+          <td class="n" style="color:${e < 0 ? 'var(--crit)' : e > 0 ? 'var(--fg-3)' : 'var(--ok)'}">${e > 0 ? '+' : ''}${e}</td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+
+  $$('[data-sm]', el).forEach(b => b.addEventListener('click', () => { statsMois = +b.dataset.sm; viewStats(el); }));
+
+  barChart($('#ch-mois', el), mois.map(m => ({ label: moisCourt(m), full: moisLong(m), val: parMois[m] })));
+
+  hBars($('#ch-type', el),
+    TYPES.map(t => ({ label:t.label, val:parType[t.id], color:'var(--data)', dot:t.hue }))
+         .sort((a,b) => b.val - a.val), total);
+
+  hBars($('#ch-motif', el),
+    MOTIFS.map(m => ({ label:m.label, val:parMotif[m.id], color:m.color, dot:m.color }))
+          .filter(x => x.val > 0).sort((a,b) => b.val - a.val), total, true);
+
+  stackBar($('#ch-per', el), [
+    { label:'Conforme',       val:cptPer.ok,     color:'var(--ok)'   },
+    { label:`< ${S.params.alerteJours} jours`, val:cptPer.proche, color:'var(--warn)' },
+    { label:'Périmé',         val:cptPer.perime, color:'var(--crit)' },
+  ]);
+}
+
+/* --- Graphique à barres verticales (12 mois, série unique) -------------- */
+function barChart(host, data) {
+  const W = Math.max(280, host.clientWidth || 320), H = 190;
+  const padL = 26, padR = 6, padT = 22, padB = 26;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const max = Math.max(4, ...data.map(d => d.val));
+  const step = iw / data.length;
+  const bw = Math.max(8, Math.min(38, step - 6));
+  const y = v => padT + ih - (v / max) * ih;
+  const ticks = [0, Math.round(max / 2), max].filter((v, i, a) => a.indexOf(v) === i);
+  const imax = data.reduce((b, d, i) => d.val > data[b].val ? i : b, 0);
+  const every = step < 34 ? Math.ceil(34 / step) : 1;   // évite le chevauchement des mois
+
+  host.innerHTML = `
+  <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+       aria-label="Kits sortis par mois : ${data.map(d => `${d.full} ${d.val}`).join(', ')}">
+    ${ticks.map(t => `<line class="c-grid" x1="${padL}" x2="${W - padR}" y1="${y(t)}" y2="${y(t)}"
+        ${t === 0 ? 'stroke="#CBD5E1"' : 'stroke-dasharray="2 4"'}/>
+      <text class="c-axis" x="${padL - 7}" y="${y(t) + 4}" text-anchor="end">${t}</text>`).join('')}
+    ${data.map((d, i) => {
+      const x = padL + i * step + (step - bw) / 2;
+      const h = Math.max(d.val > 0 ? 3 : 0, (d.val / max) * ih);
+      return `<g class="c-bar">
+        <rect x="${x}" y="${y(d.val)}" width="${bw}" height="${h}" rx="4" ry="4" fill="var(--data)"/>
+        ${d.val > 0 ? `<rect x="${x}" y="${y(d.val) + Math.max(0, h - 5)}" width="${bw}" height="${Math.min(5, h)}" fill="var(--data)"/>` : ''}
+        ${i === imax && d.val > 0 ? `<text class="c-val" x="${x + bw/2}" y="${y(d.val) - 7}" text-anchor="middle">${d.val}</text>` : ''}
+        <rect class="c-hit" x="${padL + i * step}" y="${padT}" width="${step}" height="${ih}"
+              data-i="${i}" tabindex="0" role="button" aria-label="${d.full} : ${d.val} kits"/>
+      </g>`;
+    }).join('')}
+    ${data.map((d, i) => (i % every === (data.length - 1) % every)
+      ? `<text class="c-axis" x="${padL + i * step + step/2}" y="${H - 8}" text-anchor="middle">${d.label}</text>` : '').join('')}
+  </svg>
+  <div class="tip" id="tip-mois" hidden></div>`;
+
+  const tip = $('#tip-mois', host);
+  $$('.c-hit', host).forEach(r => {
+    const show = () => {
+      const i = +r.dataset.i, d = data[i];
+      tip.innerHTML = `${d.full} · <b>${d.val}</b> kit${d.val > 1 ? 's' : ''}`;
+      tip.hidden = false;
+      tip.style.left = Math.min(W - 40, Math.max(40, padL + i * step + step / 2)) + 'px';
+      tip.style.top  = y(d.val) + 'px';
+    };
+    r.addEventListener('pointerenter', show);
+    r.addEventListener('focus', show);
+    r.addEventListener('pointerleave', () => tip.hidden = true);
+    r.addEventListener('blur', () => tip.hidden = true);
+  });
+}
+
+/* --- Barres horizontales (identité portée par le libellé) --------------- */
+function hBars(host, data, total, statut = false) {
+  const max = Math.max(1, ...data.map(d => d.val));
+  if (!data.length || !total) {
+    host.innerHTML = `<div class="empty" style="padding:24px">${ico('chart',32)}
+      <strong>Aucune donnée</strong><p>Aucune sortie sur la période choisie.</p></div>`;
+    return;
+  }
+  host.innerHTML = data.map(d => `
+    <div class="hbar-row">
+      <div class="hbar-top">
+        ${statut ? '' : `<span class="dot" style="background:${d.dot}"></span>`}
+        ${statut ? `<span class="dot" style="background:${d.color};border-radius:50%"></span>` : ''}
+        <span>${esc(d.label)}</span><span class="spacer"></span>
+        <span class="num" style="font-weight:800">${d.val}</span>
+        <span class="num" style="color:var(--fg-3);font-size:12px;min-width:38px;text-align:right">${Math.round(d.val/total*100)} %</span>
+      </div>
+      <div class="hbar-track"><i class="hbar-fill" style="width:${d.val/max*100}%;background:${d.color}"></i></div>
+    </div>`).join('');
+}
+
+/* --- Barre empilée (composition du stock) ------------------------------- */
+function stackBar(host, parts) {
+  const total = parts.reduce((n, p) => n + p.val, 0);
+  if (!total) { host.innerHTML = `<div class="empty" style="padding:24px">${ico('box',32)}
+    <strong>Stock vide</strong><p>Aucun kit en stock actuellement.</p></div>`; return; }
+  host.innerHTML = `
+    <div class="stack-bar" role="img" aria-label="${parts.map(p => `${p.label} : ${p.val}`).join(', ')}">
+      ${parts.filter(p => p.val).map(p => `<i style="flex:${p.val};background:${p.color}"></i>`).join('')}
+    </div>
+    <div class="legend">${parts.map(p => `<span>
+      <span class="dot" style="background:${p.color};border-radius:50%"></span>
+      ${esc(p.label)} · <b class="num">${p.val}</b>
+      <span style="color:var(--fg-3)">(${Math.round(p.val/total*100)} %)</span></span>`).join('')}</div>`;
+}
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  if (route !== 'stats' || !session) return;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { const v = $('.view'); if (v) viewStats(v); }, 200);
+});
+
+/* ---------- 13. VUE PARAMÈTRES (admin) ---------------------------------- */
+
+function viewParams(el) {
+  el.innerHTML = `
+    <div class="section-title">Dotation cible par type</div>
+    <div class="card">${TYPES.map(t => `
+      <div class="kit-row" style="background:var(--surface)">
+        <span class="dot" style="background:${t.hue}"></span>
+        <span style="flex:1"><div style="font-size:14.5px;font-weight:700">${t.label}</div>
+          <div class="kit-per">${stockType(t.id).length} en stock actuellement</div></span>
+        <div class="row" style="gap:6px">
+          <button class="icon-btn dark" data-d="-1" data-t="${t.id}" aria-label="Réduire la dotation ${t.label}">${ico('minus',18)}</button>
+          <span class="num" style="min-width:26px;text-align:center;font-size:17px;font-weight:800">${dotation(t.id)}</span>
+          <button class="icon-btn dark" data-d="1" data-t="${t.id}" aria-label="Augmenter la dotation ${t.label}">${ico('plus',18)}</button>
+        </div>
+      </div>`).join('')}</div>
+
+    <div class="section-title">Alerte de péremption</div>
+    <div class="card pad">
+      <label class="label" for="p-alerte">Prévenir quand un kit périme dans moins de</label>
+      <div class="inp-group">
+        <input class="inp num" id="p-alerte" type="number" min="7" max="365" step="1" value="${S.params.alerteJours}">
+        <span class="btn btn-soft" style="pointer-events:none">jours</span>
+      </div>
+      <p class="hint">Les kits concernés apparaissent en orange dans le stock et sont à sortir en priorité.</p>
+    </div>
+
+    <div class="section-title">Codes d'accès</div>
+    ${enLigne() ? `
+    <div class="card pad">
+      <p class="hint" style="margin:0">${ico('shield',14)} Les codes sont des mots de passe de comptes
+      Supabase : ils ne figurent pas dans ce fichier et se modifient depuis la console
+      Supabase (Authentication &gt; Users). C'est ce qui permet de publier l'app sur un
+      hébergement public sans exposer d'accès.</p>
+    </div>` : `
+    <div class="card pad">
+      <div class="field">
+        <label class="label" for="p-chef">Code chef d'agrès (partagé)</label>
+        <input class="inp num" id="p-chef" inputmode="numeric" maxlength="4" value="${esc(S.params.codeChef)}">
+        <p class="hint">Donne accès uniquement à l'écran de sortie de kit.</p>
+      </div>
+      ${S.params.admins.map((a, i) => `
+      <div class="field">
+        <label class="label" for="p-a${i}">Code ${esc(a.nom)}</label>
+        <input class="inp num" id="p-a${i}" data-admin="${i}" inputmode="numeric" maxlength="4" value="${esc(a.code)}">
+      </div>`).join('')}
+      <p class="hint">${ico('info',13)} En mode démo, les codes sont stockés dans ce navigateur.</p>
+    </div>`}
+
+    <div class="section-title">Données</div>
+    <div class="card pad stack">
+      <button class="btn btn-ghost btn-block" id="p-export">${ico('download',18)} Exporter la base (JSON)</button>
+      <button class="btn btn-ghost btn-block" id="p-csv">${ico('download',18)} Exporter tout l'historique (CSV)</button>
+      ${enLigne() ? '' : `<button class="btn btn-ghost btn-block" id="p-reset">${ico('refresh',18)} Réinitialiser les données de démo</button>`}
+      <p class="hint" style="margin:0">${ico('info',13)} ${enLigne()
+        ? 'Base Supabase : les données sont partagées entre tous les téléphones du CS.'
+        : 'Mode démo : tout est stocké dans ce navigateur, rien n\'est partagé.'}</p>
+    </div>
+
+    <div style="text-align:center;padding:var(--s5) 0 var(--s3);color:var(--fg-3);font-size:12px;font-weight:600">
+      Kits VSAV · ${ORG.cs}<br>Connecté : ${esc(session.nom)}
+    </div>`;
+
+  $$('[data-d]', el).forEach(b => b.addEventListener('click', async () => {
+    const t = b.dataset.t, d = +b.dataset.d;
+    haptic();
+    try { await API.majDotation(t, Math.max(0, Math.min(20, dotation(t) + d))); viewParams(el); }
+    catch (e) { toast(e.message || 'Enregistrement impossible', 'err'); }
+  }));
+  $('#p-alerte', el).addEventListener('change', async e => {
+    try {
+      await API.majAlerte(Math.max(7, Math.min(365, +e.target.value || 60)));
+      toast('Seuil enregistré', 'ok');
+    } catch (err) { toast(err.message || 'Enregistrement impossible', 'err'); }
+  });
+  $('#p-chef', el)?.addEventListener('change', e => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+    if (v.length !== 4) { toast('Le code doit faire 4 chiffres', 'err'); e.target.value = S.params.codeChef; return; }
+    S.params.codeChef = v; save(); toast('Code enregistré', 'ok');
+  });
+  $$('[data-admin]', el).forEach(i => i.addEventListener('change', e => {   // mode démo seulement
+    const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+    if (v.length !== 4) { toast('Le code doit faire 4 chiffres', 'err'); e.target.value = S.params.admins[+i.dataset.admin].code; return; }
+    S.params.admins[+i.dataset.admin].code = v; save(); toast('Code enregistré', 'ok');
+  }));
+  $('#p-export', el).addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(S, null, 2)], { type:'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `kits-vsav-base-${todayISO()}.json`; a.click(); URL.revokeObjectURL(a.href);
+    toast('Base exportée', 'ok');
+  });
+  $('#p-csv', el).addEventListener('click', () => { histF = { periode:'tout', sens:'tous', type:'tous', q:'' }; exportCSV(); });
+  $('#p-reset', el)?.addEventListener('click', () => confirmer({
+    title: 'Réinitialiser la démo ?', danger: true, ok: 'Réinitialiser',
+    message: 'Toutes les données saisies dans ce navigateur seront remplacées par le jeu de démonstration.',
+  }, () => { S = seed(); save(); ajoutsSession = []; panier = []; toast('Données réinitialisées', 'ok'); go('stock'); }));
+}
+
+/* ---------- 14. SCANNER D'ÉTIQUETTE ------------------------------------- */
+/* Datamatrix / QR / code-barres. Utilise l'API native BarcodeDetector quand
+   elle existe (Android, Chrome), sinon ZXing en repli (iOS, Safari).        */
+
+let scanStop = null;
+
+function ouvrirScanner({ titre, onResult }) {
+  if (!window.isSecureContext) {
+    toast('La caméra exige une adresse en https — saisie manuelle en attendant', 'err');
+    return;
+  }
+  const box = document.createElement('div');
+  box.className = 'scanner';
+  box.innerHTML = `
+    <video playsinline muted autoplay></video>
+    <div class="scan-frame"><div class="scan-box"><div class="scan-line"></div></div></div>
+    <div class="scan-top">
+      <button class="icon-btn" id="sc-close" aria-label="Fermer le scanner">${ico('x',24)}</button>
+      <h3>${esc(titre)}</h3>
+      <button class="icon-btn" id="sc-torch" aria-label="Lampe" hidden>${ico('torch',22)}</button>
+    </div>
+    <div class="scan-bottom">
+      <div id="sc-raw" hidden></div>
+      <p id="sc-msg">Cadrez le code de l'étiquette du kit</p>
+      <button class="btn btn-ghost btn-block" id="sc-manuel">Saisir à la main</button>
+    </div>`;
+  $('#overlay').appendChild(box);
+
+  const video  = $('video', box);
+  const msg    = $('#sc-msg', box);
+  const fermer = () => { scanStop?.(); scanStop = null; box.remove(); };
+  $('#sc-close', box).addEventListener('click', fermer);
+  $('#sc-manuel', box).addEventListener('click', fermer);
+
+  const traiter = raw => {
+    const r = parseEtiquette(raw);
+    haptic([20, 40, 20]);
+    const brut = $('#sc-raw', box);
+    brut.hidden = false; brut.className = 'scan-raw';
+    brut.textContent = 'Code lu : ' + raw;
+    if (onResult(r) !== false) fermer();
+    else msg.textContent = 'Kit non trouvé — réessayez ou saisissez à la main';
+  };
+
+  demarrerCamera(video, traiter, msg, box)
+    .then(stop => { scanStop = stop; })
+    .catch(e => { msg.textContent = messageCamera(e); });
+}
+
+/** Traduit les erreurs de getUserMedia en consigne utilisable sur le terrain. */
+function messageCamera(e) {
+  switch (e?.name) {
+    case 'NotAllowedError':  return "Accès caméra refusé — autorisez-le dans les réglages du navigateur, ou saisissez à la main.";
+    case 'NotFoundError':    return "Aucune caméra détectée sur cet appareil.";
+    case 'NotReadableError': return "La caméra est déjà utilisée par une autre application.";
+    case 'SecurityError':    return "La caméra exige une adresse en https.";
+    default: return 'Caméra indisponible : ' + (e?.message || e);
+  }
+}
+
+async function demarrerCamera(video, onCode, msg, box) {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+  });
+  video.srcObject = stream;
+  await video.play().catch(() => {});
+
+  // Lampe torche si le matériel le permet
+  const track = stream.getVideoTracks()[0];
+  if (track?.getCapabilities?.().torch) {
+    const b = $('#sc-torch', box); b.hidden = false;
+    let on = false;
+    b.addEventListener('click', () => {
+      on = !on;
+      track.applyConstraints({ advanced: [{ torch: on }] });
+      b.style.background = on ? 'rgba(255,255,255,.2)' : '';
+    });
+  }
+
+  const arret = () => { try { stream.getTracks().forEach(t => t.stop()); } catch {} };
+
+  // 1) API native (Android, Chrome)
+  const formats = window.BarcodeDetector ? await BarcodeDetector.getSupportedFormats().catch(() => []) : [];
+  if (formats.includes('data_matrix') || formats.includes('qr_code')) {
+    const utiles = formats.filter(f => ['data_matrix','qr_code','code_128','code_39','ean_13','pdf417'].includes(f));
+    const det = new BarcodeDetector({ formats: utiles });
+    let vivant = true;
+    const boucle = async () => {
+      if (!vivant) return;
+      try {
+        const codes = await det.detect(video);
+        if (codes.length) { vivant = false; arret(); onCode(codes[0].rawValue); return; }
+      } catch {}
+      requestAnimationFrame(boucle);
+    };
+    requestAnimationFrame(boucle);
+    return () => { vivant = false; arret(); };
+  }
+
+  // 2) Repli ZXing (iOS, Safari)
+  msg.textContent = 'Chargement du lecteur de code…';
+  const ZX = await chargerZXing();
+  msg.textContent = "Cadrez le code de l'étiquette du kit";
+  const hints = new Map();
+  hints.set(ZX.DecodeHintType.POSSIBLE_FORMATS, [
+    ZX.BarcodeFormat.DATA_MATRIX, ZX.BarcodeFormat.QR_CODE,
+    ZX.BarcodeFormat.CODE_128, ZX.BarcodeFormat.CODE_39, ZX.BarcodeFormat.EAN_13,
+  ]);
+  hints.set(ZX.DecodeHintType.TRY_HARDER, true);
+  const reader = new ZX.BrowserMultiFormatReader(hints, 250);
+  let fini = false;
+  reader.decodeFromStream(stream, video, res => {
+    if (res && !fini) { fini = true; try { reader.reset(); } catch {} arret(); onCode(res.getText()); }
+  });
+  return () => { try { reader.reset(); } catch {} arret(); };
+}
+
+function chargerZXing() {
+  if (window.ZXing) return Promise.resolve(window.ZXing);
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+    s.onload  = () => window.ZXing ? res(window.ZXing) : rej(new Error('lecteur non chargé'));
+    s.onerror = () => rej(new Error('lecteur indisponible hors connexion'));
+    document.head.appendChild(s);
+  });
+}
+
+/** Lecture de l'étiquette kit : numéro, date de péremption, type.
+ *  Format observé au CS (texte imprimé à côté du datamatrix) :
+ *      25731
+ *      31/07/2026
+ *      KIT INTUBATION VSAV
+ *  Gère aussi le GS1 (AI 17 péremption, AI 21 n° de série) et les codes du type
+ *  « INT011 ». Le code brut reste affiché à l'écran de confirmation : si le
+ *  décodage tombe à côté, cette chaîne suffit à recaler la fonction.          */
+function parseEtiquette(raw) {
+  const out = { raw, numero: '', peremption: '', type: '' };
+  const GS = String.fromCharCode(29);                        // séparateur GS1
+  let   s  = String(raw).split(GS).join('|').trim();
+  // GS1 concaténé sans séparateur : on écarte le préfixe 01 + GTIN sur 14 chiffres
+  // pour que les AI suivants (17 péremption, 21 n° de série) redeviennent lisibles.
+  if (/^01\d{14}/.test(s)) s = '|' + s.slice(16);
+
+  // -- date de péremption. `brut` retient le texte exact reconnu : il sera
+  //    retiré avant de chercher le numéro, sans risque de couper un autre nombre.
+  let m, brut = '';
+  const dates = [
+    [/(?:^|\D)((\d{4})-(\d{2})-(\d{2}))(?!\d)/,            (g) => `${g[2]}-${g[3]}-${g[4]}`],  // AAAA-MM-JJ
+    [/(?:^|\D)((\d{2})[\/.](\d{2})[\/.](\d{4}))(?!\d)/,    (g) => `${g[4]}-${g[3]}-${g[2]}`],  // JJ/MM/AAAA
+    [/(?:^|\D)((\d{2})-(\d{2})-(\d{4}))(?!\d)/,            (g) => `${g[4]}-${g[3]}-${g[2]}`],  // JJ-MM-AAAA
+    [/(?:^|\|)17((\d{2})(\d{2})(\d{2}))(?!\d)/,            (g) => `20${g[2]}-${g[3]}-${g[4] === '00' ? '28' : g[4]}`], // GS1 AI 17
+    [/(?:^|\D)((\d{2})[\/.\-](\d{4}))(?!\d)/,              (g) => `${g[3]}-${g[2]}-28`],       // MM/AAAA
+  ];
+  for (const [re, fmt] of dates) {
+    if ((m = s.match(re))) { out.peremption = fmt(m); brut = m[1]; break; }
+  }
+
+  // -- numéro de kit : nombre isolé en priorité, puis jeton alphanumérique
+  //    (« INT011 »), le tout après avoir écarté la date reconnue.
+  if ((m = s.match(/(?:^|\|)21([A-Za-z0-9]{1,20})/))) out.numero = m[1];             // GS1 AI 21
+  if (!out.numero) {
+    const reste = brut ? s.split(brut).join(' ') : s;
+    const plusLong = a => a.sort((x, y) => y.length - x.length)[0] || '';
+    const jetons = reste.split(/[^A-Za-z0-9]+/).filter(Boolean);
+    out.numero = plusLong(jetons.filter(t => /^\d{3,7}$/.test(t)))
+              || plusLong(jetons.filter(t => /^[A-Za-z]{2,4}\d{2,7}$/.test(t)))
+              || plusLong(reste.match(/\d{3,7}/g) || []);
+  }
+
+  // -- type de kit
+  const up = sansAccent(s).toUpperCase();
+  let trouve = TYPES.find(t => up.includes(sansAccent(t.label).toUpperCase()))
+            || TYPES.find(t => up.includes(t.id.split('_').join(' ')))
+            || (up.includes('MEMBRE') ? T.MEMBRE_SECT : null);
+  if (!trouve && (m = up.match(/(?:^|[^A-Z])(INT|PER|MED|BRU|ACC|AES|MEM|MS)\s*\d/))) {
+    trouve = { INT:T.INTUBATION, PER:T.PERFUSION, MED:T.MEDICAMENT, BRU:T.BRULURE,
+               ACC:T.ACCOUCHEMENT, AES:T.AES, MEM:T.MEMBRE_SECT, MS:T.MEMBRE_SECT }[m[1]];
+  }
+  if (trouve) out.type = trouve.id;
+  return out;
+}
+
+/* ============================================================================
+   15. SUPABASE
+   ----------------------------------------------------------------------------
+   Deux modes, décidés par la constante SUPABASE ci-dessous :
+
+   • configuration vide  → mode démo, tout reste dans le navigateur ;
+   • url + clé anon      → base partagée, codes d'accès vérifiés côté serveur.
+
+   Aucun mot de passe ne figure ici : les codes sont ceux de comptes Supabase.
+   Le fichier peut donc être publié sur un hébergement statique (GitHub Pages,
+   Netlify…) sans exposer d'accès. Tout est verrouillé par les politiques RLS
+   du script supabase.sql — la clé anon seule ne donne rien.
+   ============================================================================ */
+
+const SUPABASE = {
+  url:     '',   // ex. https://abcdefgh.supabase.co   (Project Settings > API)
+  anonKey: '',   // clé « anon public » — publique par nature, protégée par RLS
+};
+
+/** Comptes créés à la main dans Supabase (voir la fin de supabase.sql). */
+const COMPTES = ['chef@vsav.seppois', 'sacha@vsav.seppois', 'arnaud@vsav.seppois'];
+
+const enLigne = () => Boolean(SUPABASE.url && SUPABASE.anonKey);
+
+/** Vrai quand l'app tourne en démo alors qu'elle est servie depuis un vrai
+ *  hébergement : les données restent dans le navigateur et ne sont partagées
+ *  avec personne. Il faut le dire, sinon une sortie saisie ici est perdue.  */
+const demoEnLigne = () =>
+  !enLigne() && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && location.protocol !== 'file:';
+const CLE_SESSION = 'vsav_sb_session';
+
+/* ---------- Dialogue bas niveau avec Supabase --------------------------- */
+
+const SB = {
+  jeton: null,   // { access_token, refresh_token, expire_le }
+
+  /** fetch avec délai maximum : au CS, mieux vaut une erreur nette qu'une
+   *  attente sans fin quand le réseau tombe. */
+  async _fetch(url, options = {}, delaiMs = 12000) {
+    const stop = new AbortController();
+    const minuteur = setTimeout(() => stop.abort(), delaiMs);
+    try {
+      return await fetch(url, { ...options, signal: stop.signal });
+    } catch (e) {
+      throw new Error(e.name === 'AbortError' ? 'Le serveur ne répond pas' : 'Pas de connexion');
+    } finally {
+      clearTimeout(minuteur);
+    }
+  },
+
+  _lireJeton() {
+    try { this.jeton = JSON.parse(localStorage.getItem(CLE_SESSION)) || null; } catch { this.jeton = null; }
+    return this.jeton;
+  },
+  _ecrireJeton(j) {
+    this.jeton = j;
+    try { j ? localStorage.setItem(CLE_SESSION, JSON.stringify(j)) : localStorage.removeItem(CLE_SESSION); } catch {}
+  },
+  _memoriser(reponse) {
+    this._ecrireJeton({
+      access_token:  reponse.access_token,
+      refresh_token: reponse.refresh_token,
+      expire_le:     Date.now() + (reponse.expires_in ?? 3600) * 1000 - 60000,  // 1 min de marge
+    });
+  },
+
+  /** Connexion par code. Les comptes sont essayés dans l'ordre : le premier
+   *  qui accepte le code donne le rôle et le nom, lus dans la table profils. */
+  async connexion(code) {
+    for (const email of COMPTES) {
+      const r = await this._fetch(`${SUPABASE.url}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { apikey: SUPABASE.anonKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: code }),
+      });
+      if (r.status === 400 || r.status === 401) continue;           // code refusé
+      if (!r.ok) throw new Error('Serveur indisponible (' + r.status + ')');
+      this._memoriser(await r.json());
+      const profils = await this.rest('profils?select=nom,role');
+      if (!profils.length) { await this.deconnexion(); throw new Error('Compte sans profil enregistré'); }
+      return { nom: profils[0].nom, role: profils[0].role === 'responsable' ? 'admin' : 'chef' };
+    }
+    return null;                                                    // aucun compte ne correspond
+  },
+
+  async deconnexion() {
+    const j = this._lireJeton();
+    if (j) {
+      try {
+        await this._fetch(`${SUPABASE.url}/auth/v1/logout`, {
+          method: 'POST',
+          headers: { apikey: SUPABASE.anonKey, Authorization: 'Bearer ' + j.access_token },
+        }, 4000);
+      } catch {}
+    }
+    this._ecrireJeton(null);
+  },
+
+  async _rafraichir() {
+    const j = this._lireJeton();
+    if (!j?.refresh_token) return false;
+    const r = await this._fetch(`${SUPABASE.url}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE.anonKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: j.refresh_token }),
+    });
+    if (!r.ok) { this._ecrireJeton(null); return false; }
+    this._memoriser(await r.json());
+    return true;
+  },
+
+  /** Appel PostgREST authentifié. Rejoue une fois après rafraîchissement du
+   *  jeton, puis renonce. */
+  async rest(chemin, options = {}, deuxiemeEssai = false) {
+    let j = this._lireJeton();
+    if (!j) throw new Error('Session expirée');
+    if (Date.now() > j.expire_le && !(await this._rafraichir())) throw new Error('Session expirée');
+    j = this.jeton;
+
+    const r = await this._fetch(`${SUPABASE.url}/rest/v1/${chemin}`, {
+      ...options,
+      headers: {
+        apikey: SUPABASE.anonKey,
+        Authorization: 'Bearer ' + j.access_token,
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    });
+
+    if (r.status === 401 && !deuxiemeEssai) {
+      if (await this._rafraichir()) return this.rest(chemin, options, true);
+      throw new Error('Session expirée');
+    }
+    if (r.status === 403) throw new Error("Vous n'avez pas les droits pour cette action");
+    if (!r.ok) {
+      const detail = await r.json().catch(() => ({}));
+      throw new Error(detail.message || `Erreur serveur (${r.status})`);
+    }
+    return r.status === 204 ? null : r.json().catch(() => null);
+  },
+};
+
+/* ---------- Traduction base ⇄ application ------------------------------- */
+
+const versApp = r => ({
+  id: r.id, type: r.type, numero: r.numero, peremption: r.peremption || '',
+  entreLe: r.entre_le, entrePar: r.entre_par || '', statut: r.statut,
+  sortieLe: r.sortie_le, sortiePar: r.sortie_par, motif: r.motif,
+  intervention: r.intervention || '', horsInventaire: r.hors_inventaire || undefined,
+});
+
+/** Charge le référentiel et l'inventaire dans l'état de l'app. */
+async function chargerDepuisSupabase() {
+  const [types, kits, params, chefs] = await Promise.all([
+    SB.rest('types_kit?select=*&order=rang'),
+    SB.rest('kits?select=*&order=entre_le.desc'),
+    SB.rest('parametres?select=*'),
+    SB.rest('chefs_agres?select=nom&actif=is.true&order=nom'),
+  ]);
+
+  TYPES = types.map(t => ({ id: t.id, label: t.libelle, hue: t.couleur, dot: t.dotation }));
+  T = Object.fromEntries(TYPES.map(t => [t.id, t]));
+  CHEFS = chefs.map(c => c.nom);
+
+  const alerte = params.find(p => p.cle === 'alerte_jours');
+  S = {
+    kits: kits.map(versApp),
+    params: {
+      dotation: Object.fromEntries(types.map(t => [t.id, t.dotation])),
+      alerteJours: Number(alerte?.valeur) || 60,
+      codeChef: '', admins: [],          // les codes vivent dans Supabase
+    },
+  };
+}
+
+/* ============================================================================
+   16. COUCHE API
+   Chaque méthode a deux chemins : Supabase quand la configuration est remplie,
+   localStorage sinon. Le reste de l'application ne connaît que cet objet.
+   ============================================================================ */
+
+const API = {
+
+  /** Sortie d'un ou plusieurs kits.
+   *  Une ligne sans `id` correspond à un kit déclaré alors qu'il n'était pas
+   *  en stock : elle crée un enregistrement marqué `horsInventaire`.          */
+  async sortie({ lignes, nom, motif, intervention }) {
+    const ts = new Date().toISOString();
+
+    if (enLigne()) {
+      let dejaSortis = 0;
+      for (const l of lignes) {
+        if (l.id) {
+          // Le filtre `statut=eq.stock` fait le travail : si quelqu'un a sorti
+          // ce kit entre-temps, la base ne renvoie aucune ligne modifiée.
+          const maj = await SB.rest(`kits?id=eq.${l.id}&statut=eq.stock`, {
+            method: 'PATCH',
+            headers: { Prefer: 'return=representation' },
+            body: JSON.stringify({
+              statut: 'sorti', sortie_le: ts, sortie_par: nom,
+              motif, intervention: intervention || null,
+            }),
+          });
+          if (!maj?.length) { dejaSortis++; continue; }
+        } else {
+          await SB.rest('kits', {
+            method: 'POST',
+            body: JSON.stringify({
+              type: l.type, numero: l.numero, peremption: l.peremption || null,
+              entre_le: ts, entre_par: '', hors_inventaire: true,
+              statut: 'sorti', sortie_le: ts, sortie_par: nom,
+              motif, intervention: intervention || null,
+            }),
+          });
+        }
+      }
+      await chargerDepuisSupabase();
+      if (dejaSortis === lignes.length) {
+        throw new Error(lignes.length > 1
+          ? 'Ces kits viennent d\'être sortis par quelqu\'un d\'autre'
+          : 'Ce kit vient d\'être sorti par quelqu\'un d\'autre');
+      }
+      return { n: lignes.length - dejaSortis, dejaSortis };
+    }
+
+    await attendre(260);
+    let n = 0;
+    for (const l of lignes) {
+      const k = l.id ? S.kits.find(x => x.id === l.id && x.statut === 'stock') : null;
+      if (k) {
+        k.statut = 'sorti'; k.sortieLe = ts; k.sortiePar = nom;
+        k.motif = motif; k.intervention = intervention;
+      } else {
+        S.kits.push({
+          id: uid(), type: l.type, numero: l.numero, peremption: l.peremption || '',
+          entreLe: ts, entrePar: '', horsInventaire: true,
+          statut: 'sorti', sortieLe: ts, sortiePar: nom, motif, intervention,
+        });
+      }
+      n++;
+    }
+    if (!n) throw new Error('Aucun kit à sortir');
+    save();
+    return { n, dejaSortis: 0 };
+  },
+
+  /** Entrée d'un kit neuf en stock. */
+  async entree({ type, numero, peremption, par }) {
+    if (enLigne()) {
+      const [ligne] = await SB.rest('kits', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({
+          type, numero, peremption: peremption || null,
+          entre_par: par, statut: 'stock',
+        }),
+      });
+      await chargerDepuisSupabase();
+      return versApp(ligne);
+    }
+
+    await attendre(220);
+    const kit = {
+      id: uid(), type, numero, peremption,
+      entreLe: new Date().toISOString(), entrePar: par, statut: 'stock',
+    };
+    S.kits.push(kit); save();
+    return kit;
+  },
+
+  /** Annulation d'un ajout (erreur de saisie). */
+  async supprimerKit(id) {
+    if (enLigne()) {
+      await SB.rest(`kits?id=eq.${id}`, { method: 'DELETE' });
+      await chargerDepuisSupabase();
+      return;
+    }
+    await attendre(160);
+    S.kits = S.kits.filter(k => k.id !== id); save();
+  },
+
+  /** Dotation cible d'un type de kit. */
+  async majDotation(typeId, valeur) {
+    S.params.dotation[typeId] = valeur;
+    const t = T[typeId]; if (t) t.dot = valeur;
+    if (enLigne()) {
+      await SB.rest(`types_kit?id=eq.${typeId}`, {
+        method: 'PATCH', body: JSON.stringify({ dotation: valeur }),
+      });
+      return;
+    }
+    save();
+  },
+
+  /** Seuil d'alerte de péremption, en jours. */
+  async majAlerte(jours) {
+    S.params.alerteJours = jours;
+    if (enLigne()) {
+      await SB.rest('parametres?cle=eq.alerte_jours', {
+        method: 'PATCH', body: JSON.stringify({ valeur: jours }),
+      });
+      return;
+    }
+    save();
+  },
+};
+
+const attendre = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- 17. DÉMARRAGE ----------------------------------------------- */
+
+// Service worker : l'app s'ouvre même sans réseau (voir sw.js).
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+/** Écran d'attente : le chargement Supabase passe par le réseau. */
+function ecranChargement(message) {
+  $('#app').innerHTML = `
+  <div class="login">
+    ${FOND_CONNEXION ? `
+      <div class="login-fond" style="background-image:url('${FOND_CONNEXION}')" aria-hidden="true"></div>
+      <div class="login-voile" aria-hidden="true"></div>` : ''}
+    <div class="login-card" style="text-align:center">
+      ${LOGO_SDIS ? `<img class="login-logo" src="${LOGO_SDIS}" width="120" height="120" alt="">`
+                  : `<div class="login-crest">${ico('flame', 30)}</div>`}
+      <h2>Kits VSAV</h2>
+      <p class="org">${esc(message)}</p>
+      <div id="chargement-action"></div>
+    </div>
+  </div>`;
+}
+
+async function demarrer() {
+  if (!enLigne()) { load(); render(); return; }   // mode démo
+
+  S = etatVide();
+  ecranChargement('Connexion à la base…');
+
+  // Une session Supabase mémorisée évite de retaper le code à chaque ouverture.
+  if (SB._lireJeton()) {
+    try {
+      const profils = await SB.rest('profils?select=nom,role');
+      if (profils?.length) {
+        session = { nom: profils[0].nom, role: profils[0].role === 'responsable' ? 'admin' : 'chef' };
+        await chargerDepuisSupabase();
+        route = session.role === 'admin' ? 'stock' : 'sortie';
+        return render();
+      }
+      SB._ecrireJeton(null);
+    } catch (e) {
+      // Session valide mais réseau absent : inutile de déconnecter, on propose
+      // de réessayer plutôt que d'afficher un inventaire faux ou vide.
+      if (!/Session expirée/.test(e.message)) {
+        ecranChargement(e.message || 'Base injoignable');
+        $('#chargement-action').innerHTML =
+          `<button class="btn btn-primary btn-block" id="reessayer">${ico('refresh',18)} Réessayer</button>`;
+        $('#reessayer').addEventListener('click', demarrer);
+        return;
+      }
+      SB._ecrireJeton(null);
+    }
+  }
+  render();                                        // écran de code d'accès
+}
+
+demarrer();
+</script>
+</body>
+</html>

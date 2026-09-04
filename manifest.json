@@ -1,0 +1,19 @@
+{
+  "name": "Kits VSAV — CS Seppois-le-Bas",
+  "short_name": "Kits VSAV",
+  "description": "Gestion des kits d'intervention du Service VSAV — sortie, réappro, péremption",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F1F3F6",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
