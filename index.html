@@ -69,6 +69,16 @@ body{
   font-family:var(--ff); font-size:16px; line-height:1.5;
   -webkit-font-smoothing:antialiased; overscroll-behavior-y:contain;
   -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;      /* deux appuis rapides ne zooment plus */
+}
+
+/* Une commande ne se sélectionne pas et ne zoome pas : sur le terrain, avec
+   des gants, on tape vite et deux fois de suite sans le vouloir.
+   Le pincer-pour-zoomer de la page reste possible — on ne le bloque jamais,
+   c'est le seul recours de quelqu'un qui voit mal.                          */
+button, .chip, .type-pick, .picker-item, .type-head, .seg button, .keypad button, .nav button{
+  touch-action:manipulation;
+  -webkit-user-select:none; user-select:none;
 }
 h1,h2,h3,h4{margin:0; line-height:1.25; letter-spacing:-0.015em}
 button,input,select,textarea{font:inherit; color:inherit}
@@ -1038,12 +1048,19 @@ function animerCompteurs() {
   $$('[data-compteur]').forEach(el => {
     const cible = +el.dataset.compteur;
     if (!Number.isFinite(cible) || cible === 0) return;
-    const debut = performance.now(), duree = 520;
-    el.textContent = '0';
+    let debut = null;
     const pas = t => {
-      const p = Math.min(1, (t - debut) / duree);
-      el.textContent = Math.round(cible * (1 - Math.pow(1 - p, 3)));   // sortie cubique
-      if (p < 1) requestAnimationFrame(pas);
+      // On ne remet à zéro qu'une fois la première image obtenue : si l'onglet
+      // est en arrière-plan, requestAnimationFrame ne se déclenche pas et le
+      // chiffre juste reste affiché au lieu d'un zéro trompeur.
+      if (debut === null) { debut = t; el.textContent = '0'; }
+      const p = Math.min(1, (t - debut) / 520);
+      if (p < 1) {
+        el.textContent = Math.round(cible * (1 - Math.pow(1 - p, 3)));   // sortie cubique
+        requestAnimationFrame(pas);
+      } else {
+        el.textContent = cible;                                          // valeur exacte
+      }
     };
     requestAnimationFrame(pas);
   });
@@ -2446,8 +2463,16 @@ const SUPABASE = {
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjYnBidXZpaGV2emJqYXJ0enppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0NzY1NTksImV4cCI6MjEwNDA1MjU1OX0.VKOKCehbKwxbEaYfFB7buFkeLLMC2XwTAhRbJl4-qe8',   // clé « anon public » — protégée par les politiques RLS
 };
 
-/** Comptes créés à la main dans Supabase (voir la fin de supabase.sql). */
-const COMPTES = ['chef@vsav.seppois', 'sacha@vsav.seppois', 'arnaud@vsav.seppois'];
+/* Adresses mail des comptes créés dans Supabase (Authentication > Users).
+   L'app les essaie dans l'ordre avec le code saisi : la première qui accepte
+   donne le rôle et le nom, lus dans la table `profils`.
+   ⚠️ Ces adresses doivent être EXACTEMENT celles des comptes Supabase, sinon
+   la connexion échoue avec « Code incorrect » même avec le bon code.        */
+const COMPTES = [
+  'chef@vsav.seppois',
+  'sacha@vsav.seppois',
+  'arnaud@vsav.seppois',
+];
 
 const enLigne = () => Boolean(SUPABASE.url && SUPABASE.anonKey);
 
@@ -2503,10 +2528,14 @@ const SB = {
         body: JSON.stringify({ email, password: code }),
       });
       if (r.status === 400 || r.status === 401) continue;           // code refusé
+      if (r.status === 429) throw new Error('Trop de tentatives, patientez une minute');
       if (!r.ok) throw new Error('Serveur indisponible (' + r.status + ')');
       this._memoriser(await r.json());
       const profils = await this.rest('profils?select=nom,role');
-      if (!profils.length) { await this.deconnexion(); throw new Error('Compte sans profil enregistré'); }
+      if (!profils.length) {
+        await this.deconnexion();
+        throw new Error('Compte sans profil : lancer l\'insert into profils');
+      }
       return { nom: profils[0].nom, role: profils[0].role === 'responsable' ? 'admin' : 'chef' };
     }
     return null;                                                    // aucun compte ne correspond
