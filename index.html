@@ -574,6 +574,8 @@ let CHEFS = [
   'SOLDERMANN Marc', 'SOLDERMANN Nicolas', 'STRUB Bertrand',
 ];
 
+/* Uniquement pour le mode démo (configuration Supabase vide). En mode connecté,
+   les codes sont des mots de passe de comptes et ceux-ci ne sont jamais lus.   */
 const DEFAULTS = {
   alerteJours: 60,
   codeChef: '1818',
@@ -2343,8 +2345,8 @@ function parseEtiquette(raw) {
    ============================================================================ */
 
 const SUPABASE = {
-  url:     '',   // ex. https://abcdefgh.supabase.co   (Project Settings > API)
-  anonKey: '',   // clé « anon public » — publique par nature, protégée par RLS
+  url:     'https://fcbpbuvihevzbjartzzi.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjYnBidXZpaGV2emJqYXJ0enppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0NzY1NTksImV4cCI6MjEwNDA1MjU1OX0.VKOKCehbKwxbEaYfFB7buFkeLLMC2XwTAhRbJl4-qe8',   // clé « anon public » — protégée par les politiques RLS
 };
 
 /** Comptes créés à la main dans Supabase (voir la fin de supabase.sql). */
