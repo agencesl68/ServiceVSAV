@@ -55,6 +55,8 @@
   --bar-h: 0px;      /* hauteur de la barre d'action collante quand elle est visible */
   --dur: 180ms;
   --ease: cubic-bezier(.2,.7,.3,1);
+  --ease-ressort: cubic-bezier(.2,1.12,.35,1);   /* léger dépassement, pour ce qui apparaît */
+  --dur-appui: 110ms;                            /* retour tactile : doit précéder le doigt */
 }
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
@@ -104,7 +106,8 @@ button{cursor:pointer}
   color:inherit; border-radius:var(--r); transition:background var(--dur) var(--ease);
 }
 .icon-btn:hover{background:rgba(255,255,255,.14)}
-.icon-btn:active{background:rgba(255,255,255,.24)}
+.icon-btn:active{background:rgba(255,255,255,.24); transform:scale(.9)}
+.icon-btn{transition:background var(--dur) var(--ease), transform var(--dur-appui) var(--ease)}
 .icon-btn[aria-current="page"]{background:rgba(255,255,255,.22)}
 .topbar .icon-btn:hover{background:rgba(225,7,23,.09)}
 .topbar .icon-btn:active{background:rgba(225,7,23,.16)}
@@ -129,8 +132,47 @@ button{cursor:pointer}
 
 main{flex:1; padding:var(--s4) var(--s4) calc(var(--nav-h) + var(--bar-h) + env(safe-area-inset-bottom) + var(--s6));
      transition:padding-bottom var(--dur) var(--ease)}
-.view{animation:fade var(--dur) var(--ease)}
+/* Le contenu glisse, le bandeau et la barre du bas restent en place : on ne
+   déplace que ce qui change vraiment de sens. Repli sur un fondu simple quand
+   le navigateur ne connaît pas l'API View Transitions.                       */
+.sans-vt .view{animation:fade var(--dur) var(--ease)}
 @keyframes fade{from{opacity:0; transform:translateY(4px)}to{opacity:1;transform:none}}
+
+@media (prefers-reduced-motion: no-preference) {
+  .topbar{view-transition-name:bandeau}
+  main{view-transition-name:contenu}
+  .nav{view-transition-name:navigation}
+
+  ::view-transition-old(contenu), ::view-transition-new(contenu){
+    animation-duration:260ms; animation-timing-function:var(--ease);
+  }
+  ::view-transition-old(bandeau), ::view-transition-new(bandeau),
+  ::view-transition-old(navigation), ::view-transition-new(navigation){
+    animation-duration:160ms;
+  }
+  html[data-sens="avant"]::view-transition-old(contenu){animation-name:glisserSortieG}
+  html[data-sens="avant"]::view-transition-new(contenu){animation-name:glisserEntreeD}
+  html[data-sens="arriere"]::view-transition-old(contenu){animation-name:glisserSortieD}
+  html[data-sens="arriere"]::view-transition-new(contenu){animation-name:glisserEntreeG}
+}
+@keyframes glisserSortieG{to{opacity:0; transform:translateX(-22px)}}
+@keyframes glisserEntreeD{from{opacity:0; transform:translateX(22px)}}
+@keyframes glisserSortieD{to{opacity:0; transform:translateX(22px)}}
+@keyframes glisserEntreeG{from{opacity:0; transform:translateX(-22px)}}
+
+/* Apparition en cascade, plafonnée : sur un historique de 400 lignes, une
+   cascade complète mettrait plusieurs secondes et donnerait l'impression que
+   l'app rame.                                                                */
+@media (prefers-reduced-motion: no-preference) {
+  .cascade > *{animation:monter 300ms var(--ease) backwards}
+  .cascade > *:nth-child(2){animation-delay:40ms}
+  .cascade > *:nth-child(3){animation-delay:80ms}
+  .cascade > *:nth-child(4){animation-delay:120ms}
+  .cascade > *:nth-child(5){animation-delay:160ms}
+  .cascade > *:nth-child(6){animation-delay:200ms}
+  .cascade > *:nth-child(n+7){animation-delay:240ms}
+}
+@keyframes monter{from{opacity:0; transform:translateY(10px)}to{opacity:1;transform:none}}
 
 /* ============================================================
    BOTTOM NAV
@@ -183,7 +225,7 @@ main{flex:1; padding:var(--s4) var(--s4) calc(var(--nav-h) + var(--bar-h) + env(
   border:1px solid transparent; font-weight:700; font-size:15px;
   transition:background var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
-.btn:active{transform:scale(.985)}
+.btn:active{transform:scale(.97)}
 .btn:disabled{opacity:.45; cursor:not-allowed; transform:none}
 .btn-primary{background:var(--brand); color:#fff; box-shadow:var(--sh-1)}
 .btn-primary:hover:not(:disabled){background:var(--brand-dark)}
@@ -217,18 +259,22 @@ textarea.inp{padding:var(--s3); min-height:80px; resize:vertical}
 .seg button{
   flex:1; min-height:44px; border:0; border-radius:var(--r-sm); background:transparent;
   font-size:13px; font-weight:700; color:var(--fg-3);
-  transition:background var(--dur) var(--ease), color var(--dur) var(--ease);
+  transition:background var(--dur) var(--ease), color var(--dur) var(--ease),
+             transform var(--dur-appui) var(--ease);
   white-space:nowrap; padding:0 6px;
 }
 .seg button[aria-pressed="true"]{background:var(--surface); color:var(--fg); box-shadow:var(--sh-1)}
+.seg button:active{transform:scale(.96)}
 
 .chips{display:flex; gap:var(--s2); flex-wrap:wrap}
 .chip{
   display:inline-flex; align-items:center; gap:7px; min-height:44px; padding:0 15px;
   border-radius:999px; border:1px solid var(--border-2); background:var(--surface);
   font-size:13px; font-weight:600; color:var(--fg-2);
-  transition:all var(--dur) var(--ease);
+  transition:background var(--dur) var(--ease), color var(--dur) var(--ease),
+             border-color var(--dur) var(--ease), transform var(--dur-appui) var(--ease);
 }
+.chip:active{transform:scale(.94)}
 .chip[aria-pressed="true"]{background:var(--fg); color:#fff; border-color:var(--fg)}
 .dot{display:inline-block; width:9px; height:9px; border-radius:3px; flex:none; vertical-align:middle;
   box-shadow:inset 0 0 0 1px rgba(15,23,42,.16)}
@@ -276,7 +322,7 @@ textarea.inp{padding:var(--s3); min-height:80px; resize:vertical}
   display:flex; align-items:center; gap:10px; max-width:520px; width:100%;
   background:var(--fg); color:#fff; padding:12px var(--s4); border-radius:var(--r);
   box-shadow:var(--sh-3); font-size:14px; font-weight:600;
-  animation:toastIn 220ms var(--ease);
+  animation:toastIn 260ms var(--ease-ressort);
 }
 .toast.ok{background:#166534}
 .toast.err{background:var(--brand-dark)}
@@ -288,7 +334,7 @@ textarea.inp{padding:var(--s3); min-height:80px; resize:vertical}
   position:fixed; left:0; right:0; bottom:0; z-index:61;
   background:var(--surface); border-radius:var(--r-xl) var(--r-xl) 0 0;
   max-height:88dvh; display:flex; flex-direction:column;
-  box-shadow:var(--sh-3); animation:sheetIn 260ms var(--ease);
+  box-shadow:var(--sh-3); animation:sheetIn 300ms var(--ease-ressort);
   padding-bottom:env(safe-area-inset-bottom);
 }
 @media(min-width:640px){
@@ -315,9 +361,10 @@ textarea.inp{padding:var(--s3); min-height:80px; resize:vertical}
    ============================================================ */
 .type-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--sh-1); overflow:hidden}
 .type-card + .type-card{margin-top:var(--s2)}
-.type-head{display:flex; align-items:center; gap:var(--s3); padding:var(--s3) var(--s4); width:100%; border:0; background:transparent; text-align:left; min-height:64px; transition:background var(--dur) var(--ease)}
+.type-head{display:flex; align-items:center; gap:var(--s3); padding:var(--s3) var(--s4); width:100%; border:0; background:transparent; text-align:left; min-height:64px;
+  transition:background var(--dur) var(--ease), transform var(--dur-appui) var(--ease)}
 .type-head:hover{background:var(--surface-2)}
-.type-head:active{background:#eef2f7}
+.type-head:active{background:#eef2f7; transform:scale(.982)}
 .type-name{font-size:15px; font-weight:700; letter-spacing:-.01em}
 .type-meta{font-size:12.5px; color:var(--fg-3); font-weight:600; margin-top:1px}
 .type-right{display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex:none}
@@ -327,7 +374,8 @@ textarea.inp{padding:var(--s3); min-height:80px; resize:vertical}
 .type-head[aria-expanded="true"] .chev{transform:rotate(90deg)}
 
 .gauge{display:block; height:6px; border-radius:3px; background:var(--border); overflow:hidden; width:78px}
-.gauge i{display:block; height:100%; border-radius:3px; background:var(--ok); transition:width 300ms var(--ease)}
+.gauge i{display:block; height:100%; border-radius:3px; background:var(--ok);
+  transition:width 300ms var(--ease); transform-origin:left; animation:remplir 420ms var(--ease) backwards}
 .gauge.low i{background:var(--warn)}
 .gauge.none i{background:var(--crit)}
 
@@ -339,10 +387,13 @@ textarea.inp{padding:var(--s3); min-height:80px; resize:vertical}
 .picker-item{
   display:flex; align-items:center; gap:var(--s3); width:100%; text-align:left;
   padding:var(--s3); border:1.5px solid var(--border); border-radius:var(--r);
-  background:var(--surface); min-height:60px; transition:all var(--dur) var(--ease);
+  background:var(--surface); min-height:60px;
+  transition:background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+             box-shadow var(--dur) var(--ease), transform var(--dur-appui) var(--ease);
 }
 .picker-item + .picker-item{margin-top:var(--s2)}
 .picker-item:hover{border-color:var(--border-2); background:var(--surface-2)}
+.picker-item:active{transform:scale(.985)}
 .picker-item[aria-pressed="true"]{border-color:var(--data); background:#eff6ff; box-shadow:0 0 0 3px #2563eb1f}
 .picker-item .fefo{font-size:10.5px; font-weight:800; letter-spacing:.05em; color:var(--data); text-transform:uppercase}
 
@@ -356,9 +407,12 @@ textarea.inp{padding:var(--s3); min-height:80px; resize:vertical}
   display:flex; flex-direction:column; align-items:flex-start; gap:5px;
   padding:var(--s3); border:1.5px solid var(--border); border-radius:var(--r);
   background:var(--surface); min-height:70px; text-align:left;
-  transition:all var(--dur) var(--ease); font-size:13.5px; font-weight:700; line-height:1.25;
+  transition:background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+             color var(--dur) var(--ease), transform var(--dur-appui) var(--ease);
+  font-size:13.5px; font-weight:700; line-height:1.25;
 }
 .type-pick:hover{background:var(--surface-2); border-color:var(--border-2)}
+.type-pick:active{transform:scale(.97)}
 .type-pick[aria-pressed="true"]{border-color:var(--fg); background:var(--fg); color:#fff}
 .type-pick[aria-pressed="true"] .tp-sub{color:#ffffffb0}
 .tp-sub{font-size:11.5px; font-weight:600; color:var(--fg-3)}
@@ -447,6 +501,12 @@ textarea.inp{padding:var(--s3); min-height:80px; resize:vertical}
 .c-axis{fill:var(--fg-3); font-size:11px; font-weight:600; font-family:var(--ff)}
 .c-val{fill:var(--fg); font-size:11.5px; font-weight:800; font-family:var(--ff); font-variant-numeric:tabular-nums}
 .c-bar{transition:opacity 140ms var(--ease)}
+/* Les barres poussent depuis l'axe. transform-box:fill-box pour que l'origine
+   soit celle du rectangle et non celle du SVG entier.                        */
+.c-bar rect:not(.c-hit){transform-origin:bottom; transform-box:fill-box;
+  animation:pousser 460ms var(--ease) backwards}
+@keyframes pousser{from{transform:scaleY(0)}}
+@keyframes remplir{from{transform:scaleX(0)}}
 .chart-wrap:hover .c-bar{opacity:.45}
 .chart-wrap .c-bar:hover{opacity:1}
 .c-hit{fill:transparent; cursor:pointer}
@@ -455,9 +515,10 @@ textarea.inp{padding:var(--s3); min-height:80px; resize:vertical}
 .hbar-top{display:flex; align-items:center; gap:var(--s2); font-size:13.5px; font-weight:600}
 .hbar-top .spacer{flex:1}
 .hbar-track{height:9px; border-radius:5px; background:var(--surface-2); border:1px solid var(--border); overflow:hidden}
-.hbar-fill{display:block; height:100%; border-radius:5px 3px 3px 5px; background:var(--data); transition:width 350ms var(--ease)}
+.hbar-fill{display:block; height:100%; border-radius:5px 3px 3px 5px; background:var(--data);
+  transition:width 350ms var(--ease); transform-origin:left; animation:remplir 520ms var(--ease) backwards}
 .stack-bar{display:flex; height:26px; border-radius:var(--r-sm); overflow:hidden; gap:2px; background:var(--border)}
-.stack-bar i{display:block; height:100%}
+.stack-bar i{display:block; height:100%; transform-origin:left; animation:remplir 520ms var(--ease) backwards}
 .legend{display:flex; flex-wrap:wrap; gap:var(--s2) var(--s4); margin-top:var(--s3)}
 .legend span{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--fg-2)}
 .tip{
@@ -952,7 +1013,41 @@ const VIEWS = {
   params:     { title:'Paramètres',          render: viewParams,     admin:true  },
 };
 
-function go(r) { route = r; render(); window.scrollTo({ top: 0 }); }
+/** Ordre des écrans : il donne le sens du glissement, pour qu'aller à droite
+ *  dans la barre du bas fasse glisser le contenu vers la gauche.            */
+const ORDRE_ECRANS = ['stock', 'sortie', 'entree', 'historique', 'stats', 'params'];
+
+const mouvementReduit = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function go(r) {
+  const sens = ORDRE_ECRANS.indexOf(r) >= ORDRE_ECRANS.indexOf(route) ? 'avant' : 'arriere';
+  const maj = () => { route = r; render(); window.scrollTo({ top: 0 }); };
+
+  if (!document.startViewTransition || mouvementReduit()) { maj(); animerCompteurs(); return; }
+
+  document.documentElement.dataset.sens = sens;
+  const t = document.startViewTransition(maj);
+  t.ready.then(animerCompteurs).catch(() => {});
+  t.finished.finally(() => delete document.documentElement.dataset.sens);
+}
+
+/** Les indicateurs montent jusqu'à leur valeur. Le HTML contient déjà le
+ *  chiffre final : sans animation, l'affichage est juste correct.           */
+function animerCompteurs() {
+  if (mouvementReduit()) return;
+  $$('[data-compteur]').forEach(el => {
+    const cible = +el.dataset.compteur;
+    if (!Number.isFinite(cible) || cible === 0) return;
+    const debut = performance.now(), duree = 520;
+    el.textContent = '0';
+    const pas = t => {
+      const p = Math.min(1, (t - debut) / duree);
+      el.textContent = Math.round(cible * (1 - Math.pow(1 - p, 3)));   // sortie cubique
+      if (p < 1) requestAnimationFrame(pas);
+    };
+    requestAnimationFrame(pas);
+  });
+}
 
 /** Hauteur réservée en bas de page pour la barre d'action collante. */
 function resetBarreHauteur() { document.documentElement.style.setProperty('--bar-h', '0px'); }
@@ -1027,14 +1122,14 @@ function viewStock(el) {
   el.innerHTML = `
     <div class="kpis">
       <div class="kpi"><div class="k-label">${ico('box',13)} En stock</div>
-        <div class="k-val num">${b.total}<span style="font-size:15px;color:var(--fg-3)">/${b.cible}</span></div>
+        <div class="k-val num"><span data-compteur="${b.total}">${b.total}</span><span style="font-size:15px;color:var(--fg-3)">/${b.cible}</span></div>
         <div class="k-sub">kits présents</div></div>
       <div class="kpi ${b.manque ? 'is-warn' : 'is-ok'}"><div class="k-label">${ico('inbox',13)} À recompléter</div>
-        <div class="k-val num">${b.manque}</div><div class="k-sub">${b.manque ? 'kits manquants' : 'dotation complète'}</div></div>
+        <div class="k-val num" data-compteur="${b.manque}">${b.manque}</div><div class="k-sub">${b.manque ? 'kits manquants' : 'dotation complète'}</div></div>
       <div class="kpi ${b.perimes ? 'is-crit' : 'is-ok'}"><div class="k-label">${ico('alert',13)} Périmés</div>
-        <div class="k-val num">${b.perimes}</div><div class="k-sub">à retirer</div></div>
+        <div class="k-val num" data-compteur="${b.perimes}">${b.perimes}</div><div class="k-sub">à retirer</div></div>
       <div class="kpi ${b.proches ? 'is-warn' : ''}"><div class="k-label">${ico('clock',13)} &lt; ${S.params.alerteJours} j</div>
-        <div class="k-val num">${b.proches}</div><div class="k-sub">à surveiller</div></div>
+        <div class="k-val num" data-compteur="${b.proches}">${b.proches}</div><div class="k-sub">à surveiller</div></div>
     </div>
 
     <div class="section-title" style="margin-top:var(--s4)">
@@ -1044,7 +1139,7 @@ function viewStock(el) {
       ${[['tous','Tous'],['manque','À recompléter'],['peremption','Péremption']].map(([id,l]) =>
         `<button data-f="${id}" aria-pressed="${stockFiltre===id}">${l}</button>`).join('')}
     </div>
-    <div id="stock-list"></div>`;
+    <div id="stock-list" class="cascade"></div>`;
 
   $$('[data-f]', el).forEach(b2 => b2.addEventListener('click', () => { stockFiltre = b2.dataset.f; viewStock(el); }));
   renderStockList($('#stock-list', el));
@@ -1811,6 +1906,7 @@ function renderHistList(host) {
   const jours = {};
   mv.slice(0, 400).forEach(m => (jours[dayKey(m.ts)] ||= []).push(m));
 
+  host.className = 'cascade';
   host.innerHTML = `<p class="hint" style="margin:12px 2px 0">${mv.length} mouvement${mv.length>1?'s':''}${mv.length>400?' · 400 affichés':''}</p>`
   + Object.entries(jours).map(([j, list]) => `
     <div class="day-head"><h4>${jourLabel(j)}</h4><span>${list.length} mvt${list.length>1?'s':''}</span></div>
@@ -1901,13 +1997,13 @@ function viewStats(el) {
 
     <div class="kpis">
       <div class="kpi"><div class="k-label">${ico('out',13)} Sorties</div>
-        <div class="k-val num">${total}</div><div class="k-sub">${moyMois} / mois en moyenne</div></div>
+        <div class="k-val num" data-compteur="${total}">${total}</div><div class="k-sub">${moyMois} / mois en moyenne</div></div>
       <div class="kpi is-ok"><div class="k-label">${ico('bolt',13)} Interventions</div>
-        <div class="k-val num">${nbInter}</div><div class="k-sub">${total ? Math.round(nbInter/total*100) : 0} % des sorties</div></div>
+        <div class="k-val num" data-compteur="${nbInter}">${nbInter}</div><div class="k-sub">${total ? Math.round(nbInter/total*100) : 0} % des sorties</div></div>
       <div class="kpi ${tauxPer > 15 ? 'is-crit' : 'is-warn'}"><div class="k-label">${ico('alert',13)} Périmés</div>
-        <div class="k-val num">${nbPerime}</div><div class="k-sub">${tauxPer} % de perte</div></div>
+        <div class="k-val num" data-compteur="${nbPerime}">${nbPerime}</div><div class="k-sub">${tauxPer} % de perte</div></div>
       <div class="kpi"><div class="k-label">${ico('clock',13)} Rotation</div>
-        <div class="k-val num">${dureeMoy}<span style="font-size:15px;color:var(--fg-3)"> j</span></div>
+        <div class="k-val num"><span data-compteur="${dureeMoy}">${dureeMoy}</span><span style="font-size:15px;color:var(--fg-3)"> j</span></div>
         <div class="k-sub">durée moyenne en stock</div></div>
     </div>
 
@@ -1978,7 +2074,8 @@ function barChart(host, data) {
       const x = padL + i * step + (step - bw) / 2;
       const h = Math.max(d.val > 0 ? 3 : 0, (d.val / max) * ih);
       return `<g class="c-bar">
-        <rect x="${x}" y="${y(d.val)}" width="${bw}" height="${h}" rx="4" ry="4" fill="var(--data)"/>
+        <rect x="${x}" y="${y(d.val)}" width="${bw}" height="${h}" rx="4" ry="4" fill="var(--data)"
+              style="animation-delay:${i * 22}ms"/>
         ${d.val > 0 ? `<rect x="${x}" y="${y(d.val) + Math.max(0, h - 5)}" width="${bw}" height="${Math.min(5, h)}" fill="var(--data)"/>` : ''}
         ${i === imax && d.val > 0 ? `<text class="c-val" x="${x + bw/2}" y="${y(d.val) - 7}" text-anchor="middle">${d.val}</text>` : ''}
         <rect class="c-hit" x="${padL + i * step}" y="${padT}" width="${step}" height="${ih}"
@@ -2695,6 +2792,8 @@ async function demarrer() {
   }
   render();                                        // écran de code d'accès
 }
+
+if (!document.startViewTransition) document.documentElement.classList.add('sans-vt');
 
 demarrer();
 </script>
