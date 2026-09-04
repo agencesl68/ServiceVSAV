@@ -648,7 +648,7 @@ let CHEFS = [
 /* Uniquement pour le mode démo (configuration Supabase vide). En mode connecté,
    les codes sont des mots de passe de comptes et ceux-ci ne sont jamais lus.   */
 const DEFAULTS = {
-  alerteJours: 60,
+  alerteJours: 20,
   codeChef: '1818',
   admins: [
     { code:'2601', nom:'MULLER Sacha'   },
@@ -711,7 +711,7 @@ function save() {
 /** État minimal : de quoi afficher l'écran de connexion avant tout chargement. */
 function etatVide() {
   return { kits: [], params: { dotation: Object.fromEntries(TYPES.map(t => [t.id, t.dot])),
-                               alerteJours: 60, codeChef: '', admins: [] } };
+                               alerteJours: 20, codeChef: '', admins: [] } };
 }
 
 function load() {
@@ -1031,14 +1031,30 @@ const mouvementReduit = () => matchMedia('(prefers-reduced-motion: reduce)').mat
 
 function go(r) {
   const sens = ORDRE_ECRANS.indexOf(r) >= ORDRE_ECRANS.indexOf(route) ? 'avant' : 'arriere';
-  const maj = () => { route = r; render(); window.scrollTo({ top: 0 }); };
 
-  if (!document.startViewTransition || mouvementReduit()) { maj(); animerCompteurs(); return; }
+  // Rendu à exécution unique : le filet de sécurité plus bas peut l'appeler
+  // une deuxième fois sans dessiner l'écran deux fois.
+  let fait = false;
+  const maj = () => {
+    if (fait) return;
+    fait = true;
+    route = r; render(); window.scrollTo({ top: 0 });
+  };
+
+  const anime = document.startViewTransition && !mouvementReduit()
+             && document.visibilityState === 'visible';
+  if (!anime) { maj(); animerCompteurs(); return; }
 
   document.documentElement.dataset.sens = sens;
-  const t = document.startViewTransition(maj);
-  t.ready.then(animerCompteurs).catch(() => {});
-  t.finished.finally(() => delete document.documentElement.dataset.sens);
+  try {
+    const t = document.startViewTransition(maj);
+    t.ready.then(animerCompteurs).catch(() => {});
+    t.finished.finally(() => delete document.documentElement.dataset.sens);
+  } catch { maj(); }
+
+  // Si le navigateur n'appelle jamais le rappel — page passée en arrière-plan
+  // au mauvais moment — l'écran resterait figé sur la vue précédente.
+  setTimeout(maj, 250);
 }
 
 /** Les indicateurs montent jusqu'à leur valeur. Le HTML contient déjà le
@@ -1292,7 +1308,7 @@ function viewSortie(el) {
 
     <div class="section-title">
       <span>Kits utilisés</span><div class="spacer"></div>
-      <button class="btn btn-sm btn-dark" id="b-scan">${ico('scan',16)} Scanner</button>
+      ${admin ? `<button class="btn btn-sm btn-dark" id="b-scan">${ico('scan',16)} Scanner</button>` : ''}
     </div>
 
     <div id="panier"></div>
@@ -1319,7 +1335,7 @@ function viewSortie(el) {
   $$('[data-m]', el).forEach(b => b.addEventListener('click', () => {
     formSortie.motif = b.dataset.m; haptic(); viewSortie(el);
   }));
-  $('#b-scan', el).addEventListener('click', () => scannerPourSortie(el));
+  $('#b-scan', el)?.addEventListener('click', () => scannerPourSortie(el));
   $('#b-valider', el).addEventListener('click', () => validerSortie(el));
 
   renderPanier(el);
@@ -1373,8 +1389,9 @@ function renderPanier(el) {
   if (!panier.length) {
     host.innerHTML = `<div class="empty card">${ico('out',36)}
       <strong>Aucun kit sélectionné</strong>
-      <p>Scannez l'étiquette du kit utilisé${session.role === 'admin'
-        ? ', ou choisissez un type ci-dessous.' : ', ou ajoutez-le manuellement ci-dessous.'}<br>
+      <p>${session.role === 'admin'
+        ? "Scannez l'étiquette du kit utilisé, ou choisissez un type ci-dessous."
+        : 'Choisissez le type de kit et saisissez son numéro ci-dessous.'}<br>
       Vous pouvez déclarer plusieurs kits en une seule fois.</p></div>`;
     return;
   }
@@ -2234,7 +2251,7 @@ function viewParams(el) {
   }));
   $('#p-alerte', el).addEventListener('change', async e => {
     try {
-      await API.majAlerte(Math.max(7, Math.min(365, +e.target.value || 60)));
+      await API.majAlerte(Math.max(7, Math.min(365, +e.target.value || 20)));
       toast('Seuil enregistré', 'ok');
     } catch (err) { toast(err.message || 'Enregistrement impossible', 'err'); }
   });
@@ -2321,14 +2338,18 @@ function messageCamera(e) {
   }
 }
 
+/* La caméra est pilotée ici, pas par ZXing : on dessine chaque image dans un
+   canvas et on la donne au décodeur. Deux raisons — l'API « camera » de ZXing
+   change d'une version à l'autre, et surtout un datamatrix d'étiquette est tout
+   petit : en analysant un carré recadré au centre plutôt que l'image entière,
+   le code occupe bien plus de pixels et se lit beaucoup mieux.               */
 async function demarrerCamera(video, onCode, msg, box) {
   const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
   });
   video.srcObject = stream;
   await video.play().catch(() => {});
 
-  // Lampe torche si le matériel le permet
   const track = stream.getVideoTracks()[0];
   if (track?.getCapabilities?.().torch) {
     const b = $('#sc-torch', box); b.hidden = false;
@@ -2340,42 +2361,89 @@ async function demarrerCamera(video, onCode, msg, box) {
     });
   }
 
-  const arret = () => { try { stream.getTracks().forEach(t => t.stop()); } catch {} };
+  let vivant = true;
+  const arret = () => { vivant = false; try { stream.getTracks().forEach(t => t.stop()); } catch {} };
 
-  // 1) API native (Android, Chrome)
+  // --- Le décodeur : API native quand elle existe, ZXing sinon -------------
+  let decoder, moteur;
   const formats = window.BarcodeDetector ? await BarcodeDetector.getSupportedFormats().catch(() => []) : [];
-  if (formats.includes('data_matrix') || formats.includes('qr_code')) {
-    const utiles = formats.filter(f => ['data_matrix','qr_code','code_128','code_39','ean_13','pdf417'].includes(f));
-    const det = new BarcodeDetector({ formats: utiles });
-    let vivant = true;
-    const boucle = async () => {
-      if (!vivant) return;
-      try {
-        const codes = await det.detect(video);
-        if (codes.length) { vivant = false; arret(); onCode(codes[0].rawValue); return; }
-      } catch {}
-      requestAnimationFrame(boucle);
-    };
-    requestAnimationFrame(boucle);
-    return () => { vivant = false; arret(); };
-  }
+  const utiles = formats.filter(f => ['data_matrix','qr_code','code_128','code_39','ean_13','pdf417'].includes(f));
 
-  // 2) Repli ZXing (iOS, Safari)
-  msg.textContent = 'Chargement du lecteur de code…';
-  const ZX = await chargerZXing();
-  msg.textContent = "Cadrez le code de l'étiquette du kit";
-  const hints = new Map();
-  hints.set(ZX.DecodeHintType.POSSIBLE_FORMATS, [
-    ZX.BarcodeFormat.DATA_MATRIX, ZX.BarcodeFormat.QR_CODE,
-    ZX.BarcodeFormat.CODE_128, ZX.BarcodeFormat.CODE_39, ZX.BarcodeFormat.EAN_13,
-  ]);
-  hints.set(ZX.DecodeHintType.TRY_HARDER, true);
-  const reader = new ZX.BrowserMultiFormatReader(hints, 250);
-  let fini = false;
-  reader.decodeFromStream(stream, video, res => {
-    if (res && !fini) { fini = true; try { reader.reset(); } catch {} arret(); onCode(res.getText()); }
-  });
-  return () => { try { reader.reset(); } catch {} arret(); };
+  if (utiles.length) {
+    const det = new BarcodeDetector({ formats: utiles });
+    moteur = 'natif';
+    decoder = async c => { const r = await det.detect(c); return r.length ? r[0].rawValue : null; };
+  } else {
+    msg.textContent = 'Chargement du lecteur…';
+    const Z = await chargerZXing();
+    moteur = 'ZXing';
+    const hints = new Map();
+    hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [
+      Z.BarcodeFormat.DATA_MATRIX, Z.BarcodeFormat.QR_CODE,
+      Z.BarcodeFormat.CODE_128, Z.BarcodeFormat.CODE_39, Z.BarcodeFormat.EAN_13,
+    ]);
+    hints.set(Z.DecodeHintType.TRY_HARDER, true);
+    const lecteur = new Z.MultiFormatReader();
+    lecteur.setHints(hints);
+    decoder = async c => {
+      try {
+        const src = new Z.HTMLCanvasElementLuminanceSource(c);
+        return lecteur.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(src))).getText();
+      } catch {
+        return null;                       // rien trouvé sur cette image
+      } finally {
+        try { lecteur.reset(); } catch {}
+      }
+    };
+  }
+  if (!vivant) return arret;
+  msg.textContent = "Cadrez le code de l'étiquette dans le carré";
+
+  // --- Boucle d'analyse ----------------------------------------------------
+  const toile = document.createElement('canvas');
+  const ctx = toile.getContext('2d', { willReadFrequently: true });
+  let images = 0;
+  const depart = performance.now();
+
+  /** `serre` = carré centré (le viseur), sinon l'image entière au cas où le
+   *  code serait décadré. On alterne : le recadrage lit mieux, le plein cadre
+   *  rattrape les erreurs de visée.                                          */
+  const dessiner = serre => {
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) return null;
+    if (serre) {
+      const cote = Math.round(Math.min(vw, vh) * 0.7);
+      toile.width = toile.height = cote;
+      ctx.drawImage(video, (vw - cote) / 2, (vh - cote) / 2, cote, cote, 0, 0, cote, cote);
+    } else {
+      const ech = Math.min(1, 1280 / vw);
+      toile.width = Math.round(vw * ech); toile.height = Math.round(vh * ech);
+      ctx.drawImage(video, 0, 0, toile.width, toile.height);
+    }
+    return toile;
+  };
+
+  const boucle = async () => {
+    if (!vivant) return;
+    const canv = dessiner(images % 4 !== 3);        // 3 images recadrées, 1 entière
+    if (canv) {
+      images++;
+      let texte = null;
+      try { texte = await decoder(canv); } catch {}
+      if (texte && vivant) { arret(); onCode(texte); return; }
+
+      const ecoule = performance.now() - depart;
+      if (ecoule > 7000 && images > 20) {
+        msg.textContent = 'Rapprochez-vous du code, ou allumez la lampe';
+      } else if (ecoule > 2500) {
+        msg.textContent = `Recherche… (${moteur}, ${images} images analysées)`;
+      }
+    }
+    setTimeout(boucle, 110);                        // ~9 images/s, suffisant et sobre
+  };
+  boucle();
+
+  return arret;
 }
 
 function chargerZXing() {
@@ -2384,7 +2452,7 @@ function chargerZXing() {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
     s.onload  = () => window.ZXing ? res(window.ZXing) : rej(new Error('lecteur non chargé'));
-    s.onerror = () => rej(new Error('lecteur indisponible hors connexion'));
+    s.onerror = () => rej(new Error('lecteur indisponible — pas de connexion ?'));
     document.head.appendChild(s);
   });
 }
@@ -2625,7 +2693,7 @@ async function chargerDepuisSupabase() {
     kits: kits.map(versApp),
     params: {
       dotation: Object.fromEntries(types.map(t => [t.id, t.dotation])),
-      alerteJours: Number(alerte?.valeur) || 60,
+      alerteJours: Number(alerte?.valeur) || 20,
       codeChef: '', admins: [],          // les codes vivent dans Supabase
     },
   };
