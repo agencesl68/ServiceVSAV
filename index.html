@@ -639,6 +639,12 @@ const MOTIFS = [
 ];
 const M = Object.fromEntries(MOTIFS.map(m => [m.id, m]));
 
+/* Un chef d'agrès ne déclare que ce qu'il constate en fin d'intervention :
+   le kit a servi, ou il était périmé. Erreur, sorti inutilement et correction
+   d'inventaire sont des jugements de gestion — ils restent aux responsables. */
+const MOTIFS_CHEF = ['INTERVENTION', 'PERIME'];
+const motifsVisibles = () => (estAdmin() ? MOTIFS : MOTIFS.filter(m => MOTIFS_CHEF.includes(m.id)));
+
 /** Chefs d'agrès du CS habilités à sortir des kits. */
 let CHEFS = [
   'ATA Teva', 'BARRET Steve', 'BIHL Patrice', 'BRESSAC Cedric', 'CASPAR Laurent',
@@ -1276,8 +1282,11 @@ function listeChefs() {
 }
 
 function viewSortie(el) {
-  const m = M[formSortie.motif];
   const admin = estAdmin();
+  const motifs = motifsVisibles();
+  // Garde-fou : un motif réservé ne doit jamais rester actif côté chef d'agrès.
+  if (!motifs.some(x => x.id === formSortie.motif)) formSortie.motif = 'INTERVENTION';
+  const m = M[formSortie.motif];
   const libelleNom = admin ? 'Responsable VSAV' : "Nom du chef d'agrès";
   if (admin && !formSortie.nom) formSortie.nom = session.nom;
 
@@ -1297,7 +1306,7 @@ function viewSortie(el) {
       <div class="field">
         <label class="label">Motif de la sortie <span class="req">*</span></label>
         <div class="chips" role="group" aria-label="Motif">
-          ${MOTIFS.map(x => `<button class="chip" data-m="${x.id}" aria-pressed="${x.id === formSortie.motif}">
+          ${motifs.map(x => `<button class="chip" data-m="${x.id}" aria-pressed="${x.id === formSortie.motif}">
              <span class="dot" style="background:${x.color}"></span>${x.short}</button>`).join('')}
         </div>
       </div>
