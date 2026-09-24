@@ -59,6 +59,7 @@
   --dur: 180ms;
   --ease: cubic-bezier(.2,.7,.3,1);
   --ease-ressort: cubic-bezier(.2,1.12,.35,1);   /* léger dépassement, pour ce qui apparaît */
+  --ease-sortie:  cubic-bezier(.4,0,1,1);        /* ce qui part accélère : ease-in */
   --dur-appui: 110ms;                            /* retour tactile : doit précéder le doigt */
 }
 @media (prefers-reduced-motion: reduce){
@@ -216,6 +217,56 @@ main{flex:1; padding:var(--s4) var(--s4) calc(var(--nav-h) + var(--bar-h) + env(
   background:var(--brand); color:#fff; font-size:10px; font-weight:800;
   display:grid; place-items:center; line-height:1;
 }
+
+/* ---- Ouverture de l'app : le décor se met en place dans l'ordre où l'œil
+   le parcourt — bandeau, contenu, barre du bas. Une seule fois, au démarrage. */
+@media (prefers-reduced-motion: no-preference) {
+  .entree .topbar{animation:tomberHaut 340ms var(--ease) backwards}
+  .entree main{animation:monterDoux 420ms var(--ease) 60ms backwards}
+  .entree .nav{animation:monterBas 340ms var(--ease-ressort) 140ms backwards}
+}
+@keyframes tomberHaut{from{opacity:0; transform:translateY(-100%)}}
+@keyframes monterBas {from{opacity:0; transform:translateY(100%)}}
+@keyframes monterDoux{from{opacity:0; transform:translateY(14px)}}
+
+/* ---- Squelette de chargement : mieux qu'un texte figé au-delà de 300 ms. */
+.squelette{display:block; border-radius:var(--r-sm); background:var(--border);
+  background-image:linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent);
+  background-size:220px 100%; background-repeat:no-repeat;
+  animation:reflet 1.25s ease-in-out infinite}
+@keyframes reflet{from{background-position:-220px 0}to{background-position:calc(100% + 220px) 0}}
+
+/* ---- Confirmation : la coche se trace, le cercle se remplit. C'est le seul
+   moment de l'app où l'on prend 700 ms — une sortie de kit, ça se valide. */
+.succes{position:fixed; inset:0; z-index:85; display:grid; place-items:center;
+  background:rgba(255,255,255,.92); backdrop-filter:blur(3px);
+  animation:fade 160ms var(--ease)}
+.succes.part{animation:fade 200ms var(--ease-sortie) reverse forwards}
+.succes-rond{width:108px; height:108px}
+.succes-rond circle, .succes-rond path{fill:none; stroke-linecap:round; stroke-linejoin:round}
+.succes-rond circle{stroke:var(--ok); stroke-width:5; stroke-dasharray:308; stroke-dashoffset:308;
+  animation:tracer 520ms var(--ease) forwards}
+.succes-rond path{stroke:var(--ok); stroke-width:7; stroke-dasharray:48; stroke-dashoffset:48;
+  animation:tracer 320ms var(--ease) 380ms forwards}
+@keyframes tracer{to{stroke-dashoffset:0}}
+.succes-texte{margin-top:var(--s4); text-align:center; animation:monterDoux 320ms var(--ease) 420ms backwards}
+.succes-texte b{display:block; font-size:19px; font-weight:800; letter-spacing:-.02em}
+.succes-texte span{display:block; font-size:14px; color:var(--fg-3); font-weight:600; margin-top:3px}
+
+/* ---- Dépliage d'une carte de stock : on anime la ligne de grille, jamais la
+   hauteur — le navigateur n'a alors aucun calcul de mise en page à refaire. */
+.volet{display:grid; grid-template-rows:0fr; transition:grid-template-rows 260ms var(--ease)}
+.volet[data-ouvert="1"]{grid-template-rows:1fr}
+.volet > div{overflow:hidden}
+
+/* ---- Pastille de la barre du bas : elle attire l'œil quand le compte change. */
+.nav .badge{animation:battement 1.8s ease-in-out 3}
+@keyframes battement{0%,100%{transform:scale(1)}8%{transform:scale(1.28)}16%{transform:scale(1)}}
+
+/* ---- Scan réussi : un éclat vert avant la fermeture du viseur. */
+.scan-eclat{position:absolute; inset:0; background:var(--ok); opacity:0; pointer-events:none;
+  animation:eclat 420ms var(--ease-sortie) forwards}
+@keyframes eclat{30%{opacity:.55}to{opacity:0}}
 
 /* ============================================================
    PRIMITIVES
@@ -855,6 +906,25 @@ function toast(msg, kind = '') {
   setTimeout(() => el.remove(), 2900);
 }
 
+/** Coche tracée plein écran. Le seul endroit où l'app prend son temps :
+ *  valider une sortie de kit mérite une confirmation qu'on ne rate pas.     */
+function confirmationSucces(titre, detail) {
+  if (mouvementReduit()) return;
+  const el = document.createElement('div');
+  el.className = 'succes';
+  el.setAttribute('role', 'status');
+  el.innerHTML = `
+    <div>
+      <svg class="succes-rond" viewBox="0 0 110 110" aria-hidden="true">
+        <circle cx="55" cy="55" r="49"/>
+        <path d="M34 57l15 15 28-30"/>
+      </svg>
+      <div class="succes-texte"><b>${esc(titre)}</b><span>${esc(detail)}</span></div>
+    </div>`;
+  $('#overlay').appendChild(el);
+  setTimeout(() => { el.classList.add('part'); setTimeout(() => el.remove(), 220); }, 1150);
+}
+
 let sheetCleanup = null;
 function openSheet({ title, body, foot, onMount }) {
   closeSheet();
@@ -1096,6 +1166,8 @@ function animerCompteurs() {
 /** Hauteur réservée en bas de page pour la barre d'action collante. */
 function resetBarreHauteur() { document.documentElement.style.setProperty('--bar-h', '0px'); }
 
+let ouvertureJouee = false;
+
 function render() {
   closeSheet();
   resetBarreHauteur();
@@ -1106,7 +1178,7 @@ function render() {
   const alertes = nbAlertes();
 
   $('#app').innerHTML = `
-  <div class="shell">
+  <div class="shell${ouvertureJouee ? '' : ' entree'}">
     <header class="topbar">
       <div class="topbar-in">
         ${LOGO_SDIS
@@ -1147,6 +1219,7 @@ function render() {
   $('#btn-params').addEventListener('click', () => isAdmin ? go('params') : demanderCodeAdmin());
   $$('[data-go]').forEach(b => b.addEventListener('click', () => { haptic(); go(b.dataset.go); }));
 
+  ouvertureJouee = true;
   v.render($('.view'));
 }
 
@@ -1230,7 +1303,8 @@ function renderStockList(host) {
         </span>
         <span class="chev">${ico('chev-r',18)}</span>
       </button>
-      ${isOpen ? (kits.length ? kits.map(k => {
+      <div class="volet" data-ouvert="${isOpen ? 1 : 0}"><div>
+      ${(kits.length ? kits.map(k => {
         const s = perStatus(k);
         return `<div class="kit-row">
           <span class="kit-no num">n°&nbsp;${esc(k.numero)}</span>
@@ -1241,14 +1315,20 @@ function renderStockList(host) {
           <button class="btn btn-sm btn-ghost" data-out="${k.id}">${ico('out',15)} Sortir</button>
         </div>`;
       }).join('') : `<div class="kit-row" style="color:var(--fg-3);font-size:13.5px;font-weight:600">
-          ${ico('inbox',16)} Aucun kit de ce type en stock</div>`) : ''}
+          ${ico('inbox',16)} Aucun kit de ce type en stock</div>`)}
+      </div></div>
     </div>`;
   }).join('');
 
   $$('[data-t]', host).forEach(b => b.addEventListener('click', () => {
     const id = b.dataset.t;
-    expanded.has(id) ? expanded.delete(id) : expanded.add(id);
-    renderStockList(host);
+    const ouvert = !expanded.has(id);
+    ouvert ? expanded.add(id) : expanded.delete(id);
+    b.setAttribute('aria-expanded', String(ouvert));
+    // On bascule la ligne de grille : la transition CSS fait le reste, sans
+    // redessiner la liste ni perdre la position de défilement.
+    b.parentElement.querySelector('.volet')?.setAttribute('data-ouvert', ouvert ? '1' : '0');
+    haptic(8);
   }));
   $$('[data-out]', host).forEach(b => b.addEventListener('click', () => {
     const k = S.kits.find(x => x.id === b.dataset.out);
@@ -1632,7 +1712,11 @@ function validerSortie(el) {
     panier = []; formManuel = { type:'', numero:'' };
     formSortie = { nom: estAdmin() ? session.nom : '', sis:'', motif:'INTERVENTION' };
     haptic([15, 40, 15]);
-    if (n) toast(`${n} kit${n > 1 ? 's' : ''} sorti${n > 1 ? 's' : ''} du stock`, 'ok');
+    if (n) {
+      confirmationSucces(`${n} kit${n > 1 ? 's' : ''} sorti${n > 1 ? 's' : ''}`,
+        m.needSis ? `Intervention ${formSortie.sis || ''}`.trim() : M[formSortie.motif].label);
+      toast(`${n} kit${n > 1 ? 's' : ''} sorti${n > 1 ? 's' : ''} du stock`, 'ok');
+    }
     if (res?.dejaSortis) {
       const d = res.dejaSortis;
       toast(`${d} kit${d > 1 ? 's' : ''} déjà sorti${d > 1 ? 's' : ''} par quelqu'un d'autre`, 'err');
@@ -2441,6 +2525,11 @@ function ouvrirScanner({ titre, onResult }) {
   const traiter = raw => {
     const r = parseEtiquette(raw);
     haptic([20, 40, 20]);
+    if (!mouvementReduit()) {
+      const eclat = document.createElement('div');
+      eclat.className = 'scan-eclat';
+      box.appendChild(eclat);
+    }
     const brut = $('#sc-raw', box);
     brut.hidden = false; brut.className = 'scan-raw';
     brut.textContent = 'Code lu : ' + raw;
@@ -3017,7 +3106,13 @@ function ecranChargement(message) {
                   : `<div class="login-crest">${ico('flame', 30)}</div>`}
       <h2>Kits VSAV</h2>
       <p class="org">${esc(message)}</p>
-      <div id="chargement-action"></div>
+      <div id="chargement-action">
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+          <i class="squelette" style="height:12px;width:70%;margin:0 auto"></i>
+          <i class="squelette" style="height:12px;width:90%;margin:0 auto"></i>
+          <i class="squelette" style="height:12px;width:55%;margin:0 auto"></i>
+        </div>
+      </div>
     </div>
   </div>`;
 }
