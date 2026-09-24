@@ -1740,7 +1740,10 @@ function validerSortie(el) {
 /* L'étiquette porte les trois informations (n°, péremption, type) : le scan est
    le chemin principal, la saisie manuelle reste le secours.                  */
 
-let formEntree = { type:'', numero:'', peremption:'' };
+/* `codeBrut` garde la chaîne lue par le scanner. Elle est enregistrée avec le
+   kit : c'est ce qui permettra de savoir si le « 515 » en tête du code désigne
+   le site ou le type, une fois quelques kits entrés.                         */
+let formEntree = { type:'', numero:'', peremption:'', codeBrut:'' };
 let ajoutsSession = [];
 
 function viewEntree(el) {
@@ -1794,6 +1797,8 @@ function viewEntree(el) {
     formEntree.numero = e.target.value.replace(/[^\dA-Za-z\/-]/g, ''); e.target.value = formEntree.numero;
   });
   $('#f-per', el).addEventListener('change', e => formEntree.peremption = e.target.value);
+  // Saisie à la main : il n'y a pas de code scanné à conserver.
+  $('#f-numero', el).addEventListener('focus', () => { formEntree.codeBrut = ''; });
   $('#b-scan-e', el).addEventListener('click', () => scannerPourEntree(el));
   $('#b-ajouter', el).addEventListener('click', () => ajouterKit(el));
   renderRecap(el);
@@ -1898,7 +1903,7 @@ function confirmerEtiquette(r, el) {
         const numero = $('#c-num', w).value.trim();
         const peremption = $('#c-per', w).value;
         if (!type || !numero || !peremption) { toast('Complétez les trois champs', 'err'); haptic([30,50,30]); return; }
-        formEntree = { type, numero, peremption };
+        formEntree = { type, numero, peremption, codeBrut: r.raw || '' };
         closeSheet();
         ajouterKit(el, { enchainer: true });
       });
@@ -1924,7 +1929,7 @@ function ajouterKit(el, opts = {}) {
     API.entree({ ...snapshot, par: session.nom }).then(kit => {
       ajoutsSession.unshift(kit);
       const per = perStatus(kit);
-      formEntree = { type: snapshot.type, numero:'', peremption:'' };   // le type reste : saisie en série
+      formEntree = { type: snapshot.type, numero:'', peremption:'', codeBrut:'' };   // le type reste : saisie en série
       haptic([15,40,15]);
       toast(`${T[kit.type].label} n° ${kit.numero} ajouté`, 'ok');
       if (per.id === 'perime') toast('Attention : ce kit est déjà périmé', 'err');
@@ -2614,6 +2619,21 @@ async function demarrerCamera(video, onCode, msg, box) {
   let vivant = true;
   const arret = () => { vivant = false; try { stream.getTracks().forEach(t => t.stop()); } catch {} };
 
+  /* Appuyer sur l'image relance la mise au point. C'est le réflexe qu'on a
+     quand un appareil photo ne veut pas accrocher, autant qu'il serve. */
+  video.style.cursor = 'pointer';
+  video.addEventListener('click', async () => {
+    haptic(8);
+    try {
+      const cap = track.getCapabilities?.() || {};
+      if (cap.focusMode?.includes('single-shot')) {
+        await track.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
+        setTimeout(() => track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {}), 1200);
+      }
+    } catch {}
+    msg.textContent = 'Mise au point…';
+  });
+
   // --- Le décodeur : API native quand elle existe, ZXing sinon -------------
   let decoder, moteur;
   const formats = window.BarcodeDetector ? await BarcodeDetector.getSupportedFormats().catch(() => []) : [];
@@ -2661,6 +2681,27 @@ async function demarrerCamera(video, onCode, msg, box) {
      obligerait à viser juste du premier coup.                                */
   const CADRAGES = [0.35, 0.55, 0.8, 1];
 
+  /* Sous plastique et sous les néons de la caserne, un reflet suffit à noyer
+     le code. On alterne image brute et image contrastée : une image sur deux
+     est retravaillée, ce qui rattrape les reflets sans doubler le calcul.    */
+  const contraster = () => {
+    const d = ctx.getImageData(0, 0, toile.width, toile.height);
+    const px = d.data;
+    let min = 255, max = 0;
+    for (let i = 0; i < px.length; i += 16) {       // échantillonnage : assez pour les bornes
+      const g = px[i];
+      if (g < min) min = g;
+      if (g > max) max = g;
+    }
+    const etendue = Math.max(1, max - min);
+    for (let i = 0; i < px.length; i += 4) {
+      const g = (px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114 - min) * 255 / etendue;
+      const v = g < 0 ? 0 : g > 255 ? 255 : g;
+      px[i] = px[i + 1] = px[i + 2] = v;
+    }
+    ctx.putImageData(d, 0, 0);
+  };
+
   const dessiner = part => {
     const vw = video.videoWidth, vh = video.videoHeight;
     if (!vw || !vh) return null;
@@ -2683,6 +2724,7 @@ async function demarrerCamera(video, onCode, msg, box) {
     if (!vivant) return;
     const canv = dessiner(CADRAGES[images % CADRAGES.length]);
     if (canv) {
+      if (images % 2 === 1) { try { contraster(); } catch {} }
       images++;
       let texte = null;
       try { texte = await decoder(canv); } catch {}
@@ -3048,14 +3090,14 @@ const API = {
   },
 
   /** Entrée d'un kit neuf en stock. */
-  async entree({ type, numero, peremption, par }) {
+  async entree({ type, numero, peremption, par, codeBrut }) {
     if (enLigne()) {
       const [ligne] = await SB.rest('kits', {
         method: 'POST',
         headers: { Prefer: 'return=representation' },
         body: JSON.stringify({
           type, numero, peremption: peremption || null,
-          entre_par: par, statut: 'stock',
+          entre_par: par, statut: 'stock', code_brut: codeBrut || null,
         }),
       });
       await chargerDepuisSupabase();
@@ -3064,7 +3106,7 @@ const API = {
 
     await attendre(220);
     const kit = {
-      id: uid(), type, numero, peremption,
+      id: uid(), type, numero, peremption, codeBrut: codeBrut || '',
       entreLe: new Date().toISOString(), entrePar: par, statut: 'stock',
     };
     S.kits.push(kit); save();
