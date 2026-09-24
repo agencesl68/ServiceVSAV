@@ -381,7 +381,11 @@ textarea.inp{padding:var(--s3); min-height:80px; resize:vertical}
 .kpi.is-ok .k-val{color:var(--ok)}
 
 /* toast */
-.toasts{position:fixed; left:0; right:0; bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px); z-index:80; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; padding:0 var(--s4)}
+.toasts{position:fixed; left:0; right:0; bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px);
+  z-index:80; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none;
+  padding:0 var(--s4); transition:bottom 200ms var(--ease), top 200ms var(--ease)}
+/* Feuille ouverte : les messages remontent au-dessus d'elle. */
+.toasts.haut{bottom:auto; top:calc(env(safe-area-inset-top) + 12px); flex-direction:column-reverse}
 .toast{
   display:flex; align-items:center; gap:10px; max-width:520px; width:100%;
   background:var(--fg); color:#fff; padding:12px var(--s4); border-radius:var(--r);
@@ -940,6 +944,7 @@ function openSheet({ title, body, foot, onMount }) {
       ${foot ? `<div class="sheet-foot">${foot}</div>` : ''}
     </div>`;
   $('#overlay').appendChild(wrap);
+  $('#toasts').classList.add('haut');
   $$('[data-close]', wrap).forEach(b => b.addEventListener('click', closeSheet));
   const onKey = e => { if (e.key === 'Escape') closeSheet(); };
   document.addEventListener('keydown', onKey);
@@ -947,7 +952,10 @@ function openSheet({ title, body, foot, onMount }) {
   onMount?.(wrap);
   $('.sheet-body button, .sheet-body input', wrap)?.focus?.({ preventScroll: true });
 }
-function closeSheet() { sheetCleanup?.(); sheetCleanup = null; }
+function closeSheet() {
+  sheetCleanup?.(); sheetCleanup = null;
+  $('#toasts')?.classList.remove('haut');
+}
 
 function confirmer({ title, message, danger = false, ok = 'Confirmer' }, onOk) {
   openSheet({
@@ -1817,7 +1825,10 @@ function scannerPourEntree(el) {
 
 /** Écran de contrôle après lecture : rien n'entre en stock sans validation. */
 function confirmerEtiquette(r, el) {
-  const lu = { type: r.type || '', numero: r.numero || '', peremption: r.peremption || '' };
+  /* Le datamatrix des étiquettes du CS ne porte pas le type de kit. Plutôt que
+     de le redemander à blanc, on repropose celui de la saisie précédente : une
+     réappro se fait presque toujours par lot du même type.                    */
+  const lu = { type: r.type || formEntree.type || '', numero: r.numero || '', peremption: r.peremption || '' };
   const complet = lu.type && lu.numero && lu.peremption;
   const manquants = [!lu.type && 'le type', !lu.numero && 'le numéro', !lu.peremption && 'la date de péremption']
                       .filter(Boolean);
@@ -1830,11 +1841,16 @@ function confirmerEtiquette(r, el) {
         : `<div class="badge warn" style="margin-bottom:14px">${ico('alert',13)} Complétez ${manquants.join(' et ')}</div>`}
 
       <div class="field">
-        <label class="label" for="c-type">Type de kit <span class="req">*</span></label>
-        <select class="inp" id="c-type">
-          <option value="">— à choisir —</option>
-          ${TYPES.map(t => `<option value="${t.id}" ${t.id === lu.type ? 'selected' : ''}>${t.label}</option>`).join('')}
-        </select>
+        <label class="label">Type de kit <span class="req">*</span>
+          ${lu.type && !r.type ? `<span class="badge neutral" style="margin-left:6px;font-size:10.5px">dernier utilisé</span>` : ''}
+        </label>
+        <div class="type-grid" id="c-types">
+          ${TYPES.map(t => `<button class="type-pick" data-ct="${t.id}" aria-pressed="${t.id === lu.type}"
+              style="min-height:54px;justify-content:center">
+            <span class="row" style="gap:7px;width:100%">
+              <span class="dot" style="background:${t.hue}"></span><span style="flex:1">${t.label}</span>
+            </span></button>`).join('')}
+        </div>
       </div>
       <div class="field">
         <label class="label" for="c-num">Numéro du kit <span class="req">*</span></label>
@@ -1859,6 +1875,13 @@ function confirmerEtiquette(r, el) {
              <button class="btn btn-primary" style="flex:1.3" id="c-ok">${ico('plus',18)} Ajouter</button>
            </div>`,
     onMount: w => {
+      let typeChoisi = lu.type;
+      $$('[data-ct]', w).forEach(b => b.addEventListener('click', () => {
+        typeChoisi = b.dataset.ct;
+        haptic();
+        $$('[data-ct]', w).forEach(x => x.setAttribute('aria-pressed', String(x.dataset.ct === typeChoisi)));
+      }));
+
       const maj = () => {
         const v = $('#c-per', w).value;
         const zone = $('#c-alerte', w);
@@ -1871,7 +1894,7 @@ function confirmerEtiquette(r, el) {
       $('#c-per', w).addEventListener('change', maj); maj();
 
       $('#c-ok', w).addEventListener('click', () => {
-        const type = $('#c-type', w).value;
+        const type = typeChoisi;
         const numero = $('#c-num', w).value.trim();
         const peremption = $('#c-per', w).value;
         if (!type || !numero || !peremption) { toast('Complétez les trois champs', 'err'); haptic([30,50,30]); return; }
