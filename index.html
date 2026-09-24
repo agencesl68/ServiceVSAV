@@ -943,12 +943,37 @@ function openSheet({ title, body, foot, onMount }) {
       <div class="sheet-body">${body}</div>
       ${foot ? `<div class="sheet-foot">${foot}</div>` : ''}
     </div>`;
+  // Une barre d'action laissée par un écran précédent n'a rien à faire
+  // derrière une feuille ouverte.
+  $('#overlay').querySelectorAll('.stickybar').forEach(b => b.remove());
+  resetBarreHauteur();
+
   $('#overlay').appendChild(wrap);
   $('#toasts').classList.add('haut');
   $$('[data-close]', wrap).forEach(b => b.addEventListener('click', closeSheet));
   const onKey = e => { if (e.key === 'Escape') closeSheet(); };
   document.addEventListener('keydown', onKey);
-  sheetCleanup = () => { wrap.remove(); document.removeEventListener('keydown', onKey); };
+
+  /* Clavier du téléphone : un élément en `position:fixed` ne bouge pas quand il
+     s'ouvre, et la moitié basse de la feuille — dont les boutons — passe
+     derrière. On la recale sur le viewport visible.                          */
+  const feuille = $('.sheet', wrap);
+  const vv = window.visualViewport;
+  const recaler = () => {
+    if (!vv) return;
+    const cache = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    feuille.style.bottom = cache ? cache + 'px' : '';
+    feuille.style.maxHeight = cache ? Math.round(vv.height * 0.92) + 'px' : '';
+  };
+  vv?.addEventListener('resize', recaler);
+  vv?.addEventListener('scroll', recaler);
+
+  sheetCleanup = () => {
+    vv?.removeEventListener('resize', recaler);
+    vv?.removeEventListener('scroll', recaler);
+    wrap.remove();
+    document.removeEventListener('keydown', onKey);
+  };
   onMount?.(wrap);
   $('.sheet-body button, .sheet-body input', wrap)?.focus?.({ preventScroll: true });
 }
@@ -1887,6 +1912,11 @@ function confirmerEtiquette(r, el) {
         $$('[data-ct]', w).forEach(x => x.setAttribute('aria-pressed', String(x.dataset.ct === typeChoisi)));
       }));
 
+      // Quand un champ prend le focus, on le ramène dans la partie visible.
+      $$('input, select', w).forEach(i => i.addEventListener('focus', () => {
+        setTimeout(() => i.scrollIntoView({ block: 'center', behavior: 'smooth' }), 260);
+      }));
+
       const maj = () => {
         const v = $('#c-per', w).value;
         const zone = $('#c-alerte', w);
@@ -2540,6 +2570,8 @@ function ouvrirScanner({ titre, onResult }) {
     <div class="scan-bottom">
       <div id="sc-raw" hidden></div>
       <p id="sc-msg">Cadrez le code de l'étiquette du kit</p>
+      <button class="btn btn-primary btn-block" id="sc-capture" style="margin-bottom:8px">
+        ${ico('scan',19)} Analyser maintenant</button>
       <button class="btn btn-ghost btn-block" id="sc-manuel">Saisir à la main</button>
     </div>`;
   $('#overlay').appendChild(box);
@@ -2608,11 +2640,16 @@ async function demarrerCamera(video, onCode, msg, box) {
 
   if (track?.getCapabilities?.().torch) {
     const b = $('#sc-torch', box); b.hidden = false;
-    let on = false;
-    b.addEventListener('click', () => {
+    // Allumée d'emblée : sous les néons de la caserne, la pose est longue et
+    // presque toutes les images sortent floues. La lumière raccourcit la pose.
+    let on = true;
+    try { await track.applyConstraints({ advanced: [{ torch: true }] }); } catch { on = false; }
+    b.style.background = on ? 'rgba(255,255,255,.2)' : '';
+    b.addEventListener('click', async () => {
       on = !on;
-      track.applyConstraints({ advanced: [{ torch: on }] });
+      try { await track.applyConstraints({ advanced: [{ torch: on }] }); } catch {}
       b.style.background = on ? 'rgba(255,255,255,.2)' : '';
+      haptic(8);
     });
   }
 
@@ -2681,9 +2718,10 @@ async function demarrerCamera(video, onCode, msg, box) {
      obligerait à viser juste du premier coup.                                */
   const CADRAGES = [0.35, 0.55, 0.8, 1];
 
-  /* Sous plastique et sous les néons de la caserne, un reflet suffit à noyer
-     le code. On alterne image brute et image contrastée : une image sur deux
-     est retravaillée, ce qui rattrape les reflets sans doubler le calcul.    */
+  /* Étirement du contraste, appliqué à CHAQUE image. Mesuré sur l'étiquette
+     réelle dégradée : sans lui, une image floue ou délavée n'est jamais lue ;
+     avec lui, les trois cas passent. Il n'a jamais fait échouer une image que
+     le brut réussissait, donc aucune raison de l'alterner.                   */
   const contraster = () => {
     const d = ctx.getImageData(0, 0, toile.width, toile.height);
     const px = d.data;
@@ -2720,19 +2758,48 @@ async function demarrerCamera(video, onCode, msg, box) {
     return toile;
   };
 
+  /* Analyse exhaustive d'une seule image, déclenchée par le bouton. La personne
+     tient l'étiquette immobile une seconde : on peut alors se permettre de
+     tester toutes les combinaisons cadrage × traitement, ce qui serait bien
+     trop lourd à 9 images par seconde.                                        */
+  const analyserAFond = async () => {
+    const bouton = $('#sc-capture', box);
+    bouton.disabled = true;
+    const essais = [];
+    // Contraste d'abord : c'est la variante qui réussit le plus souvent.
+    for (const part of [0.3, 0.4, 0.55, 0.7, 0.9, 1]) essais.push([part, true], [part, false]);
+    for (let i = 0; i < essais.length; i++) {
+      if (!vivant) return;
+      const [part, contraste] = essais[i];
+      bouton.innerHTML = ico('refresh', 19) + ` Analyse… ${Math.round((i + 1) / essais.length * 100)} %`;
+      const canv = dessiner(part);
+      if (!canv) continue;
+      if (contraste) { try { contraster(); } catch {} }
+      let texte = null;
+      try { texte = await decoder(canv); } catch {}
+      if (texte) { arret(); onCode(texte); return; }
+      await new Promise(r => setTimeout(r, 0));      // laisse l'écran se rafraîchir
+    }
+    bouton.disabled = false;
+    bouton.innerHTML = ico('scan', 19) + ' Analyser maintenant';
+    msg.textContent = 'Code illisible sur cette image — rapprochez-vous et réessayez';
+    haptic([30, 50, 30]);
+  };
+  $('#sc-capture', box).addEventListener('click', analyserAFond);
+
   const boucle = async () => {
     if (!vivant) return;
     const canv = dessiner(CADRAGES[images % CADRAGES.length]);
     if (canv) {
-      if (images % 2 === 1) { try { contraster(); } catch {} }
+      try { contraster(); } catch {}
       images++;
       let texte = null;
       try { texte = await decoder(canv); } catch {}
       if (texte && vivant) { arret(); onCode(texte); return; }
 
       const ecoule = performance.now() - depart;
-      if (ecoule > 7000 && images > 20) {
-        msg.textContent = 'Rapprochez-vous du code, ou allumez la lampe';
+      if (ecoule > 6000 && images > 20) {
+        msg.textContent = 'Tenez immobile et appuyez sur « Analyser maintenant »';
       } else if (ecoule > 2500) {
         msg.textContent = `Recherche… (${moteur}, ${images} images analysées)`;
       }
