@@ -5,7 +5,7 @@
 // configuration Supabase vit dans index.html : avec un cache prioritaire, une
 // mise à jour de l'URL ou de la clé ne serait jamais vue par les téléphones
 // déjà installés. Les images, elles, ne bougent jamais : cache d'abord.
-const CACHE = "vsav-kits-v1";
+const CACHE = "vsav-kits-v2";
 
 const COQUILLE = ["./", "./index.html", "./manifest.json"];
 const IMAGES   = ["./icon.png", "./logo.png", "./fond.jpg"];
@@ -53,4 +53,38 @@ self.addEventListener("fetch", (e) => {
         .catch(() => caches.match(req).then((r) => r || caches.match("./index.html")))
     );
   }
+});
+
+
+// --- Notifications ---------------------------------------------------------
+// Le workflow GitHub signe et envoie ; ici on ne fait qu'afficher et ouvrir.
+
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data && e.data.text() }; }
+  e.waitUntil(
+    self.registration.showNotification(d.title || "Kits VSAV", {
+      body: d.body || "",
+      icon: "./icon.png",
+      badge: "./icon.png",
+      tag: d.tag || "kits-vsav",        // une alerte remplace la précédente
+      renotify: true,
+      data: { url: d.url || "./index.html" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const cible = (e.notification.data && e.notification.data.url) || "./index.html";
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((fenetres) => {
+      // Si l'app est déjà ouverte, on la ramène au premier plan au lieu
+      // d'ouvrir un deuxième onglet.
+      for (const f of fenetres) {
+        if (f.url.includes(self.location.origin) && "focus" in f) return f.focus();
+      }
+      return self.clients.openWindow(cible);
+    })
+  );
 });

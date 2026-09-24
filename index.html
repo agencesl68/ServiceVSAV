@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FFFFFF">
+<!-- L'app s'ouvre sans code : au minimum, qu'elle ne remonte pas dans les
+     moteurs de recherche. Ce n'est pas une protection, c'est de l'hygiène. -->
+<meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
@@ -649,7 +652,6 @@ let CHEFS = [
    les codes sont des mots de passe de comptes et ceux-ci ne sont jamais lus.   */
 const DEFAULTS = {
   alerteJours: 20,
-  codeChef: '1818',
   admins: [
     { code:'2601', nom:'MULLER Sacha'   },
     { code:'1507', nom:'DERRIEN Arnaud' },
@@ -711,7 +713,7 @@ function save() {
 /** État minimal : de quoi afficher l'écran de connexion avant tout chargement. */
 function etatVide() {
   return { kits: [], params: { dotation: Object.fromEntries(TYPES.map(t => [t.id, t.dot])),
-                               alerteJours: 20, codeChef: '', admins: [] } };
+                               alerteJours: 20, admins: [] } };
 }
 
 function load() {
@@ -830,7 +832,6 @@ function seed() {
     params: {
       dotation: Object.fromEntries(TYPES.map(t => [t.id, t.dot])),
       alerteJours: DEFAULTS.alerteJours,
-      codeChef: DEFAULTS.codeChef,
       admins: DEFAULTS.admins.map(a => ({ ...a })),
     },
   };
@@ -884,64 +885,13 @@ function confirmer({ title, message, danger = false, ok = 'Confirmer' }, onOk) {
   });
 }
 
-/* ---------- 6. CONNEXION ------------------------------------------------ */
+/* ---------- 6. ACCÈS ----------------------------------------------------- */
+/* L'app s'ouvre directement sur l'écran de sortie : un chef d'agrès qui rentre
+   d'intervention n'a aucun code à taper. La roue crantée du bandeau ouvre
+   l'accès responsable (Sacha, Arnaud), qui débloque stock, entrée, historique,
+   statistiques, réglages — et le scan.                                       */
 
-let pin = '';
-function viewLogin() {
-  $('#app').innerHTML = `
-  <div class="login">
-    ${FOND_CONNEXION ? `
-      <div class="login-fond" style="background-image:url('${FOND_CONNEXION}')" aria-hidden="true"></div>
-      <div class="login-voile" aria-hidden="true"></div>` : ''}
-    <div class="login-card">
-      ${LOGO_SDIS
-        ? `<img class="login-logo" src="${LOGO_SDIS}" width="120" height="120"
-               alt="Sapeurs-Pompiers du Haut-Rhin — Incendie et Secours">`
-        : `<div class="login-crest">${ico('flame', 30)}</div>`}
-      <h2>Kits VSAV</h2>
-      <p class="org">${ORG.cs} · ${ORG.service}</p>
-
-      <div class="pin-display" id="pin-dots" role="status" aria-label="Code d'accès">
-        ${Array.from({ length: longueurCode() }, () => '<i class="pin-dot"></i>').join('')}
-      </div>
-      <p id="pin-msg" class="err" style="justify-content:center;min-height:20px;margin:0 0 12px" role="alert"></p>
-
-      <div class="keypad">
-        ${[1,2,3,4,5,6,7,8,9].map(n => `<button data-k="${n}">${n}</button>`).join('')}
-        <button class="fn" data-k="clear" aria-label="Effacer tout">C</button>
-        <button data-k="0">0</button>
-        <button class="fn" data-k="del" aria-label="Corriger">${ico('back', 22)}</button>
-      </div>
-
-      ${demoEnLigne() ? `
-      <div class="demo-codes" style="background:var(--warn-bg);border-color:#FDE68A;color:var(--warn-fg)">
-        ${ico('alert', 14)} <b>Mode démo</b> — cette adresse n'est pas reliée à la base.
-        Les saisies resteront dans ce téléphone.
-      </div>` : ''}
-      ${(enLigne() || demoEnLigne()) ? '' : `
-      <div class="demo-codes">
-        ${ico('info', 14)} <b>Mode démo</b> — codes d'accès :<br>
-        Chef d'agrès <b>${esc(S.params.codeChef)}</b> ·
-        ${S.params.admins.map(a => `${esc(a.nom.split(' ').slice(-1)[0] || a.nom)} <b>${esc(a.code)}</b>`).join(' · ')}
-      </div>`}
-    </div>
-  </div>`;
-
-  $$('.keypad button').forEach(b => b.addEventListener('click', () => {
-    const k = b.dataset.k;
-    haptic(8);
-    if (k === 'clear') pin = '';
-    else if (k === 'del') pin = pin.slice(0, -1);
-    else if (pin.length < longueurCode()) pin += k;
-    renderPin();
-    if (pin.length === longueurCode()) setTimeout(tryLogin, 140);
-  }));
-  renderPin();
-}
-
-function renderPin() {
-  $$('#pin-dots .pin-dot').forEach((d, i) => d.classList.toggle('on', i < pin.length));
-}
+const estAdmin = () => session?.role === 'admin';
 
 /** Remet à zéro tout ce qu'un utilisateur a saisi : sur un téléphone partagé,
  *  garder le nom ou le panier du précédent fausserait la saisie suivante.    */
@@ -958,24 +908,72 @@ function reinitialiserFormulaires() {
 /** Supabase impose 6 caractères minimum pour un mot de passe de compte. */
 const longueurCode = () => (enLigne() ? 6 : 4);
 
+let pin = '';
+function renderPin() {
+  $$('#pin-dots .pin-dot').forEach((d, i) => d.classList.toggle('on', i < pin.length));
+}
+
 function codeRefuse(message) {
-  const d = $('#pin-dots');
+  const d = $('#pin-dots'); if (!d) return;
   d.classList.add('shake');
   $('#pin-msg').innerHTML = ico('alert', 15) + ' ' + esc(message);
   haptic([40, 60, 40]);
   setTimeout(() => {
     pin = ''; renderPin(); d.classList.remove('shake');
     $$('.keypad button').forEach(b => b.disabled = false);
-    $('#pin-msg').innerHTML = '';
+    if ($('#pin-msg')) $('#pin-msg').innerHTML = '';
   }, message.length > 20 ? 2400 : 900);
 }
 
-async function tryLogin() {
+/** Feuille de saisie du code responsable, ouverte par la roue crantée. */
+function demanderCodeAdmin() {
+  pin = '';
+  openSheet({
+    title: 'Accès responsable VSAV',
+    body: `
+      <p class="hint" style="margin:0 0 16px">Réservé à Sacha et Arnaud : stock,
+      réappro, historique, statistiques et réglages.</p>
+
+      <div class="pin-display" id="pin-dots" role="status" aria-label="Code d'accès">
+        ${Array.from({ length: longueurCode() }, () => '<i class="pin-dot"></i>').join('')}
+      </div>
+      <p id="pin-msg" class="err" style="justify-content:center;min-height:20px;margin:0 0 12px" role="alert"></p>
+
+      <div class="keypad">
+        ${[1,2,3,4,5,6,7,8,9].map(n => `<button data-k="${n}">${n}</button>`).join('')}
+        <button class="fn" data-k="clear" aria-label="Effacer tout">C</button>
+        <button data-k="0">0</button>
+        <button class="fn" data-k="del" aria-label="Corriger">${ico('back', 22)}</button>
+      </div>
+
+      ${enLigne() || demoEnLigne() ? '' : `
+      <div class="demo-codes" style="margin-top:16px">
+        ${ico('info', 14)} <b>Mode démo</b> —
+        ${S.params.admins.map(a => `${esc(a.nom.split(' ').slice(-1)[0] || a.nom)} <b>${esc(a.code)}</b>`).join(' · ')}
+      </div>`}`,
+    onMount: w => {
+      $$('.keypad button', w).forEach(b => b.addEventListener('click', () => {
+        const k = b.dataset.k;
+        haptic(8);
+        if (k === 'clear') pin = '';
+        else if (k === 'del') pin = pin.slice(0, -1);
+        else if (pin.length < longueurCode()) pin += k;
+        renderPin();
+        if (pin.length === longueurCode()) setTimeout(connexionAdmin, 140);
+      }));
+      renderPin();
+    },
+  });
+}
+
+async function connexionAdmin() {
   if (!enLigne()) {
     const admin = S.params.admins.find(a => a.code === pin);
-    if (admin) { reinitialiserFormulaires(); session = { nom: admin.nom, role: 'admin' }; pin = ''; go('stock'); return; }
-    if (pin === S.params.codeChef) { reinitialiserFormulaires(); session = { nom: '', role: 'chef' }; pin = ''; go('sortie'); return; }
-    return codeRefuse('Code incorrect');
+    if (!admin) return codeRefuse('Code incorrect');
+    pin = ''; reinitialiserFormulaires();
+    session = { nom: admin.nom, role: 'admin' };
+    closeSheet(); go('stock');
+    return;
   }
 
   $$('.keypad button').forEach(b => b.disabled = true);
@@ -984,24 +982,31 @@ async function tryLogin() {
   try {
     const s = await SB.connexion(pin);
     if (!s) { $('#pin-msg').style.color = ''; return codeRefuse('Code incorrect'); }
-    reinitialiserFormulaires();
+    if (s.role !== 'admin') { await SB.deconnexion(); $('#pin-msg').style.color = ''; return codeRefuse('Ce compte n\'est pas responsable'); }
+    pin = ''; reinitialiserFormulaires();
     session = s;
     await chargerDepuisSupabase();
-    pin = ''; $('#pin-msg').style.color = '';
-    go(session.role === 'admin' ? 'stock' : 'sortie');
+    closeSheet(); go('stock');
   } catch (e) {
     $('#pin-msg').style.color = '';
     codeRefuse(e.message || 'Connexion impossible');
   }
 }
 
+/** Quitter l'accès responsable : on revient à l'écran de sortie, pas à un
+ *  écran de connexion — l'app reste utilisable par tout le monde.           */
 function logout() {
-  confirmer({ title: 'Se déconnecter ?', message: 'Vous reviendrez à l\'écran de code d\'accès.', ok: 'Se déconnecter' },
-    async () => {
-      if (enLigne()) { await SB.deconnexion(); S = etatVide(); }
-      reinitialiserFormulaires();
-      session = null; render();
-    });
+  confirmer({
+    title: 'Quitter l\'accès responsable ?',
+    message: 'L\'app revient à l\'écran de sortie de kit, accessible à tous.',
+    ok: 'Quitter',
+  }, async () => {
+    if (enLigne()) await SB.deconnexion();
+    reinitialiserFormulaires();
+    session = null;
+    if (enLigne()) { try { await chargerDepuisSupabase(); } catch {} }
+    go('sortie');
+  });
 }
 
 /* ---------- 7. COQUILLE DE L'APP ---------------------------------------- */
@@ -1088,9 +1093,8 @@ function resetBarreHauteur() { document.documentElement.style.setProperty('--bar
 function render() {
   closeSheet();
   resetBarreHauteur();
-  if (!session) return viewLogin();
 
-  const isAdmin = session.role === 'admin';
+  const isAdmin = estAdmin();
   if (!isAdmin) route = 'sortie';
   const v = VIEWS[route] || VIEWS.stock;
   const alertes = nbAlertes();
@@ -1108,9 +1112,10 @@ function render() {
           <div class="sub">${ORG.service}</div>
         </div>
         <div class="spacer"></div>
-        ${isAdmin ? `<button class="icon-btn" id="btn-params" aria-label="Paramètres"
-                  ${route === 'params' ? 'aria-current="page"' : ''}>${ico('cog', 21)}</button>` : ''}
-        <button class="icon-btn" id="btn-logout" aria-label="Se déconnecter">${ico('logout', 21)}</button>
+        <button class="icon-btn" id="btn-params"
+                aria-label="${isAdmin ? 'Paramètres' : 'Accès responsable VSAV'}"
+                ${route === 'params' ? 'aria-current="page"' : ''}>${ico('cog', 21)}</button>
+        ${isAdmin ? `<button class="icon-btn" id="btn-logout" aria-label="Quitter l'accès responsable">${ico('logout', 21)}</button>` : ''}
       </div>
     </header>
     ${demoEnLigne() ? `
@@ -1132,8 +1137,8 @@ function render() {
   if (!isAdmin) { document.documentElement.style.setProperty('--nav-h', '0px'); }
   else document.documentElement.style.setProperty('--nav-h', '62px');
 
-  $('#btn-logout').addEventListener('click', logout);
-  $('#btn-params')?.addEventListener('click', () => go('params'));
+  $('#btn-logout')?.addEventListener('click', logout);
+  $('#btn-params').addEventListener('click', () => isAdmin ? go('params') : demanderCodeAdmin());
   $$('[data-go]').forEach(b => b.addEventListener('click', () => { haptic(); go(b.dataset.go); }));
 
   v.render($('.view'));
@@ -1266,13 +1271,13 @@ function ajouterAuPanier(kit) {
  *  – code responsable VSAV : les deux responsables uniquement, cet accès ne
  *    servant qu'à eux. « Un autre nom… » reste leur porte de sortie.         */
 function listeChefs() {
-  const noms = session.role === 'admin' ? S.params.admins.map(a => a.nom) : CHEFS;
+  const noms = estAdmin() ? S.params.admins.map(a => a.nom) : CHEFS;
   return [...noms].sort((a, b) => a.localeCompare(b, 'fr'));
 }
 
 function viewSortie(el) {
   const m = M[formSortie.motif];
-  const admin = session.role === 'admin';
+  const admin = estAdmin();
   const libelleNom = admin ? 'Responsable VSAV' : "Nom du chef d'agrès";
   if (admin && !formSortie.nom) formSortie.nom = session.nom;
 
@@ -1347,14 +1352,14 @@ function viewSortie(el) {
 function choisirChef(el) {
   const noms = listeChefs();
   openSheet({
-    title: session.role === 'admin' ? 'Responsable VSAV' : "Chef d'agrès",
+    title: estAdmin() ? 'Responsable VSAV' : "Chef d'agrès",
     body: `<div id="ch-liste">${noms.map(nom => `
       <button class="picker-item" data-nom="${esc(nom)}" style="min-height:52px">
         <span class="mv-ic in" style="background:var(--surface-2);color:var(--fg-3)">${ico('user',16)}</span>
         <span style="flex:1;font-weight:700">${esc(nom)}</span>
         ${nom === formSortie.nom ? `<span style="color:var(--ok)">${ico('check',18)}</span>` : ''}
       </button>`).join('')}
-      ${session.role === 'admin' ? `
+      ${estAdmin() ? `
       <button class="picker-item" id="ch-autre" style="min-height:52px;border-style:dashed">
         <span class="mv-ic in" style="background:var(--surface-2);color:var(--fg-3)">${ico('plus',16)}</span>
         <span style="flex:1;font-weight:700;color:var(--fg-2)">Un autre nom…</span>
@@ -1389,7 +1394,7 @@ function renderPanier(el) {
   if (!panier.length) {
     host.innerHTML = `<div class="empty card">${ico('out',36)}
       <strong>Aucun kit sélectionné</strong>
-      <p>${session.role === 'admin'
+      <p>${estAdmin()
         ? "Scannez l'étiquette du kit utilisé, ou choisissez un type ci-dessous."
         : 'Choisissez le type de kit et saisissez son numéro ci-dessous.'}<br>
       Vous pouvez déclarer plusieurs kits en une seule fois.</p></div>`;
@@ -1412,7 +1417,7 @@ function renderPanier(el) {
   $$('[data-rm]', host).forEach(b => b.addEventListener('click', () => {
     panier = panier.filter(k => k.id !== b.dataset.rm);
     renderPanier(el);
-    if (session.role === 'admin') renderGrilleTypes(el); else renderManuel(el);
+    if (estAdmin()) renderGrilleTypes(el); else renderManuel(el);
     majBarre();
   }));
 }
@@ -1432,7 +1437,7 @@ function scannerPourSortie(el) {
       // Numéro absent de l'inventaire : on l'accepte mais on le signale.
       const type = r.type || formManuel.type;
       if (!type) {
-        toast(session.role === 'admin'
+        toast(estAdmin()
           ? `Kit n° ${r.numero} introuvable en stock`
           : `Kit n° ${r.numero} inconnu — ajoutez-le à la main ci-dessous`, 'err');
         return false;
@@ -1596,7 +1601,7 @@ function validerSortie(el) {
     else { e.hidden = true; i.removeAttribute('aria-invalid'); }
   };
   setErr('nom', formSortie.nom.trim().length < 3
-    ? (session.role === 'admin' ? 'Indiquez le responsable VSAV' : "Indiquez le nom du chef d'agrès")
+    ? (estAdmin() ? 'Indiquez le responsable VSAV' : "Indiquez le nom du chef d'agrès")
     : '');
   if (m.needSis) setErr('sis', formSortie.sis.trim() ? '' : "Le n° d'intervention SIS est obligatoire");
   if (!ok) { $('[aria-invalid="true"]', el)?.focus(); haptic([30,50,30]); return; }
@@ -1616,7 +1621,7 @@ function validerSortie(el) {
     // Le nom du chef est remis à zéro après chaque validation : sur un téléphone
     // partagé, garder le nom précédent fausserait la sortie suivante.
     panier = []; formManuel = { type:'', numero:'' };
-    formSortie = { nom: session.role === 'admin' ? session.nom : '', sis:'', motif:'INTERVENTION' };
+    formSortie = { nom: estAdmin() ? session.nom : '', sis:'', motif:'INTERVENTION' };
     haptic([15, 40, 15]);
     if (n) toast(`${n} kit${n > 1 ? 's' : ''} sorti${n > 1 ? 's' : ''} du stock`, 'ok');
     if (res?.dejaSortis) {
@@ -2207,20 +2212,17 @@ function viewParams(el) {
       <p class="hint">Les kits concernés apparaissent en orange dans le stock et sont à sortir en priorité.</p>
     </div>
 
-    <div class="section-title">Codes d'accès</div>
+    <div class="section-title">Accès responsable</div>
     ${enLigne() ? `
     <div class="card pad">
       <p class="hint" style="margin:0">${ico('shield',14)} Les codes sont des mots de passe de comptes
       Supabase : ils ne figurent pas dans ce fichier et se modifient depuis la console
-      Supabase (Authentication &gt; Users). C'est ce qui permet de publier l'app sur un
-      hébergement public sans exposer d'accès.</p>
+      Supabase (Authentication &gt; Users).<br><br>
+      L'écran de sortie, lui, est <b>ouvert à tous sans code</b> — c'est voulu, mais ça
+      veut aussi dire que toute personne connaissant l'adresse peut enregistrer une
+      sortie.</p>
     </div>` : `
     <div class="card pad">
-      <div class="field">
-        <label class="label" for="p-chef">Code chef d'agrès (partagé)</label>
-        <input class="inp num" id="p-chef" inputmode="numeric" maxlength="4" value="${esc(S.params.codeChef)}">
-        <p class="hint">Donne accès uniquement à l'écran de sortie de kit.</p>
-      </div>
       ${S.params.admins.map((a, i) => `
       <div class="field">
         <label class="label" for="p-a${i}">Code ${esc(a.nom)}</label>
@@ -2228,6 +2230,9 @@ function viewParams(el) {
       </div>`).join('')}
       <p class="hint">${ico('info',13)} En mode démo, les codes sont stockés dans ce navigateur.</p>
     </div>`}
+
+    <div class="section-title">Notifications</div>
+    <div class="card pad" id="bloc-notif"></div>
 
     <div class="section-title">Données</div>
     <div class="card pad stack">
@@ -2255,16 +2260,12 @@ function viewParams(el) {
       toast('Seuil enregistré', 'ok');
     } catch (err) { toast(err.message || 'Enregistrement impossible', 'err'); }
   });
-  $('#p-chef', el)?.addEventListener('change', e => {
-    const v = e.target.value.replace(/\D/g, '').slice(0, 4);
-    if (v.length !== 4) { toast('Le code doit faire 4 chiffres', 'err'); e.target.value = S.params.codeChef; return; }
-    S.params.codeChef = v; save(); toast('Code enregistré', 'ok');
-  });
   $$('[data-admin]', el).forEach(i => i.addEventListener('change', e => {   // mode démo seulement
     const v = e.target.value.replace(/\D/g, '').slice(0, 4);
     if (v.length !== 4) { toast('Le code doit faire 4 chiffres', 'err'); e.target.value = S.params.admins[+i.dataset.admin].code; return; }
     S.params.admins[+i.dataset.admin].code = v; save(); toast('Code enregistré', 'ok');
   }));
+  renderNotifications(el);
   $('#p-export', el).addEventListener('click', () => {
     const blob = new Blob([JSON.stringify(S, null, 2)], { type:'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -2276,6 +2277,122 @@ function viewParams(el) {
     title: 'Réinitialiser la démo ?', danger: true, ok: 'Réinitialiser',
     message: 'Toutes les données saisies dans ce navigateur seront remplacées par le jeu de démonstration.',
   }, () => { S = seed(); save(); ajoutsSession = []; panier = []; toast('Données réinitialisées', 'ok'); go('stock'); }));
+}
+
+/* ---------- Notifications (responsables) --------------------------------- */
+/* Web Push natif, même montage que l'app feuille d'heures HK : l'appareil
+   s'abonne ici, le workflow GitHub envoie, Make le déclenche à l'heure.     */
+
+/** La clé publique VAPID se transmet en octets, pas en base64. */
+function cleEnOctets(base64) {
+  const comble = '='.repeat((4 - base64.length % 4) % 4);
+  const net = (base64 + comble).replace(/-/g, '+').replace(/_/g, '/');
+  const brut = atob(net);
+  return Uint8Array.from([...brut].map(c => c.charCodeAt(0)));
+}
+
+const pushPossible = () =>
+  'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+async function abonnementCourant() {
+  if (!pushPossible()) return null;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    return reg ? await reg.pushManager.getSubscription() : null;
+  } catch { return null; }
+}
+
+async function renderNotifications(el) {
+  const host = $('#bloc-notif', el); if (!host) return;
+
+  if (!enLigne()) {
+    host.innerHTML = `<p class="hint" style="margin:0">${ico('info',13)} Les alertes exigent la base
+      Supabase : elles ne fonctionnent pas en mode démo.</p>`;
+    return;
+  }
+  if (!pushPossible()) {
+    host.innerHTML = `<p class="hint" style="margin:0">${ico('alert',13)} Ce navigateur ne gère pas
+      les notifications. Sur iPhone, il faut d'abord ajouter l'app à l'écran d'accueil.</p>`;
+    return;
+  }
+
+  const ab = await abonnementCourant();
+  const refus = Notification.permission === 'denied';
+
+  host.innerHTML = `
+    <p class="hint" style="margin:0 0 14px">Sur <b>cet appareil</b>, pour ${esc(session.nom)} :
+      alerte quand il ne reste qu'un kit Perfusion ou Médicament, et quand un kit périme
+      dans moins de deux semaines.</p>
+    ${refus ? `<p class="err" style="margin:0 0 12px">${ico('alert',14)} Notifications bloquées
+      dans les réglages du navigateur — il faut les réautoriser pour ce site.</p>` : ''}
+    <div class="row" style="gap:10px">
+      <span class="badge ${ab ? 'ok' : 'neutral'}">${ico(ab ? 'check-circle' : 'x', 13)}
+        ${ab ? 'Activées sur cet appareil' : 'Non activées ici'}</span>
+    </div>
+    <button class="btn ${ab ? 'btn-ghost' : 'btn-dark'} btn-block" id="b-notif"
+            style="margin-top:14px" ${refus && !ab ? 'disabled' : ''}>
+      ${ico(ab ? 'x' : 'check', 18)} ${ab ? 'Désactiver sur cet appareil' : 'Activer les notifications'}
+    </button>
+    ${ab ? `<button class="btn btn-soft btn-block" id="b-notif-test" style="margin-top:8px">
+      ${ico('info',17)} Envoyer un essai</button>` : ''}`;
+
+  $('#b-notif', host).addEventListener('click', () => ab ? desactiverNotifications(el) : activerNotifications(el));
+  $('#b-notif-test', host)?.addEventListener('click', essaiNotification);
+}
+
+async function activerNotifications(el) {
+  const b = $('#b-notif'); b.disabled = true; b.innerHTML = ico('refresh',17) + ' Activation…';
+  try {
+    if ((await Notification.requestPermission()) !== 'granted') {
+      toast('Notifications refusées', 'err'); return renderNotifications(el);
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const ab = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: cleEnOctets(VAPID_PUBLIQUE),
+    });
+    const j = ab.toJSON();
+    await SB.rest('abonnements_push', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        nom: session.nom, endpoint: j.endpoint,
+        p256dh: j.keys.p256dh, auth: j.keys.auth,
+      }),
+    });
+    haptic([15,40,15]);
+    toast('Notifications activées sur cet appareil', 'ok');
+  } catch (e) {
+    toast(e.message || 'Activation impossible', 'err');
+  }
+  renderNotifications(el);
+}
+
+async function desactiverNotifications(el) {
+  const b = $('#b-notif'); b.disabled = true; b.innerHTML = ico('refresh',17) + ' Désactivation…';
+  try {
+    const ab = await abonnementCourant();
+    if (ab) {
+      const pt = encodeURIComponent(ab.toJSON().endpoint);
+      await SB.rest(`abonnements_push?endpoint=eq.${pt}`, { method: 'DELETE' }).catch(() => {});
+      await ab.unsubscribe();
+    }
+    toast('Notifications désactivées');
+  } catch (e) {
+    toast(e.message || 'Désactivation impossible', 'err');
+  }
+  renderNotifications(el);
+}
+
+/** Essai local : vérifie l'affichage, pas la chaîne d'envoi complète. */
+async function essaiNotification() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification('Kits VSAV', {
+      body: 'Essai — si vous voyez ce message, les notifications s\'affichent bien.',
+      icon: 'icon.png', badge: 'icon.png', tag: 'essai',
+    });
+  } catch (e) { toast(e.message || 'Affichage impossible', 'err'); }
 }
 
 /* ---------- 14. SCANNER D'ÉTIQUETTE ------------------------------------- */
@@ -2527,20 +2644,24 @@ function parseEtiquette(raw) {
    ============================================================================ */
 
 const SUPABASE = {
-  url:     'https://fcbpbuvihevzbjartzzi.supabase.co',
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjYnBidXZpaGV2emJqYXJ0enppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0NzY1NTksImV4cCI6MjEwNDA1MjU1OX0.VKOKCehbKwxbEaYfFB7buFkeLLMC2XwTAhRbJl4-qe8',   // clé « anon public » — protégée par les politiques RLS
+  url:     'https://cexieeoufbsudsfejjqk.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNleGllZW91ZmJzdWRzZmVqanFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyMjY1OTIsImV4cCI6MjEwNTgwMjU5Mn0.JR3rhXLb7wO0u6meX6_oOk7Xc0eB1fpyYv0ubBy8JlM',   // clé « anon public » — protégée par les politiques RLS
 };
 
 /* Adresses mail des comptes créés dans Supabase (Authentication > Users).
-   L'app les essaie dans l'ordre avec le code saisi : la première qui accepte
-   donne le rôle et le nom, lus dans la table `profils`.
+   Seuls les deux responsables ont un compte : l'app s'ouvre sans connexion pour
+   tout le monde. L'app les essaie dans l'ordre avec le code saisi ; la première
+   qui accepte donne le nom, lu dans la table `profils`.
    ⚠️ Ces adresses doivent être EXACTEMENT celles des comptes Supabase, sinon
    la connexion échoue avec « Code incorrect » même avec le bon code.        */
 const COMPTES = [
-  'chef@vsav.seppois',
   'sacha@vsav.seppois',
   'arnaud@vsav.seppois',
 ];
+
+/* Clé publique de signature des notifications. Publique par nature : la clé
+   privée qui les signe vit dans les secrets GitHub, jamais ici.             */
+const VAPID_PUBLIQUE = 'BGUcF9mMx8zDqep8H2dCo8MyK7WTnzHJIz-KAKUO6Jf-dPR2SyJJbLrTCy8jlZp3IKi1CBNA6wLwYqW73GGI0M4';
 
 const enLigne = () => Boolean(SUPABASE.url && SUPABASE.anonKey);
 
@@ -2635,26 +2756,25 @@ const SB = {
     return true;
   },
 
-  /** Appel PostgREST authentifié. Rejoue une fois après rafraîchissement du
-   *  jeton, puis renonce. */
+  /** Appel PostgREST. Sans session, la requête part avec la seule clé anon :
+   *  les politiques RLS autorisent alors la lecture et la sortie de kit, rien
+   *  de plus. Avec une session responsable, tout le reste s'ouvre.          */
   async rest(chemin, options = {}, deuxiemeEssai = false) {
     let j = this._lireJeton();
-    if (!j) throw new Error('Session expirée');
-    if (Date.now() > j.expire_le && !(await this._rafraichir())) throw new Error('Session expirée');
-    j = this.jeton;
+    if (j && Date.now() > j.expire_le) j = (await this._rafraichir()) ? this.jeton : null;
 
-    const r = await this._fetch(`${SUPABASE.url}/rest/v1/${chemin}`, {
-      ...options,
-      headers: {
-        apikey: SUPABASE.anonKey,
-        Authorization: 'Bearer ' + j.access_token,
-        'Content-Type': 'application/json',
-        ...(options.headers || {}),
-      },
-    });
+    const entetes = {
+      apikey: SUPABASE.anonKey,
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    };
+    if (j) entetes.Authorization = 'Bearer ' + j.access_token;
 
-    if (r.status === 401 && !deuxiemeEssai) {
+    const r = await this._fetch(`${SUPABASE.url}/rest/v1/${chemin}`, { ...options, headers: entetes });
+
+    if (r.status === 401 && j && !deuxiemeEssai) {
       if (await this._rafraichir()) return this.rest(chemin, options, true);
+      this._ecrireJeton(null);
       throw new Error('Session expirée');
     }
     if (r.status === 403) throw new Error("Vous n'avez pas les droits pour cette action");
@@ -2694,7 +2814,7 @@ async function chargerDepuisSupabase() {
     params: {
       dotation: Object.fromEntries(types.map(t => [t.id, t.dotation])),
       alerteJours: Number(alerte?.valeur) || 20,
-      codeChef: '', admins: [],          // les codes vivent dans Supabase
+      admins: [],                        // les codes vivent dans Supabase
     },
   };
 }
@@ -2861,33 +2981,32 @@ async function demarrer() {
   if (!enLigne()) { load(); render(); return; }   // mode démo
 
   S = etatVide();
-  ecranChargement('Connexion à la base…');
+  ecranChargement("Chargement de l'inventaire…");
 
-  // Une session Supabase mémorisée évite de retaper le code à chaque ouverture.
+  // Une session responsable mémorisée évite de retaper le code à chaque
+  // ouverture. Son échec n'empêche rien : l'app reste utilisable sans.
   if (SB._lireJeton()) {
     try {
       const profils = await SB.rest('profils?select=nom,role');
-      if (profils?.length) {
-        session = { nom: profils[0].nom, role: profils[0].role === 'responsable' ? 'admin' : 'chef' };
-        await chargerDepuisSupabase();
-        route = session.role === 'admin' ? 'stock' : 'sortie';
-        return render();
+      if (profils?.length && profils[0].role === 'responsable') {
+        session = { nom: profils[0].nom, role: 'admin' };
+      } else {
+        SB._ecrireJeton(null);
       }
-      SB._ecrireJeton(null);
-    } catch (e) {
-      // Session valide mais réseau absent : inutile de déconnecter, on propose
-      // de réessayer plutôt que d'afficher un inventaire faux ou vide.
-      if (!/Session expirée/.test(e.message)) {
-        ecranChargement(e.message || 'Base injoignable');
-        $('#chargement-action').innerHTML =
-          `<button class="btn btn-primary btn-block" id="reessayer">${ico('refresh',18)} Réessayer</button>`;
-        $('#reessayer').addEventListener('click', demarrer);
-        return;
-      }
-      SB._ecrireJeton(null);
-    }
+    } catch { SB._ecrireJeton(null); }
   }
-  render();                                        // écran de code d'accès
+
+  try {
+    await chargerDepuisSupabase();
+    route = estAdmin() ? 'stock' : 'sortie';
+    render();
+  } catch (e) {
+    // Sans inventaire à jour, mieux vaut une erreur franche qu'un stock faux.
+    ecranChargement(e.message || 'Base injoignable');
+    $('#chargement-action').innerHTML =
+      `<button class="btn btn-primary btn-block" id="reessayer">${ico('refresh',18)} Réessayer</button>`;
+    $('#reessayer').addEventListener('click', demarrer);
+  }
 }
 
 if (!document.startViewTransition) document.documentElement.classList.add('sans-vt');
