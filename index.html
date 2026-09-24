@@ -2477,6 +2477,18 @@ async function demarrerCamera(video, onCode, msg, box) {
   await video.play().catch(() => {});
 
   const track = stream.getVideoTracks()[0];
+
+  /* Un datamatrix d'étiquette fait quelques millimètres. Mise au point continue
+     et zoom optique quand l'appareil les expose : c'est ce qui fait la
+     différence entre un code de 80 px et un code de 200 px à l'analyse.      */
+  try {
+    const cap = track.getCapabilities?.() || {};
+    const reglages = [];
+    if (cap.focusMode?.includes('continuous')) reglages.push({ focusMode: 'continuous' });
+    if (cap.zoom) reglages.push({ zoom: Math.min(cap.zoom.max ?? 1, Math.max(cap.zoom.min ?? 1, 2)) });
+    if (reglages.length) await track.applyConstraints({ advanced: reglages });
+  } catch {}
+
   if (track?.getCapabilities?.().torch) {
     const b = $('#sc-torch', box); b.hidden = false;
     let on = false;
@@ -2531,27 +2543,33 @@ async function demarrerCamera(video, onCode, msg, box) {
   let images = 0;
   const depart = performance.now();
 
-  /** `serre` = carré centré (le viseur), sinon l'image entière au cas où le
-   *  code serait décadré. On alterne : le recadrage lit mieux, le plein cadre
-   *  rattrape les erreurs de visée.                                          */
-  const dessiner = serre => {
+  /* On tourne sur quatre cadrages : très serré, serré, large, puis l'image
+     entière. Selon la distance à laquelle la personne tient l'étiquette, l'un
+     des quatre donne au code une taille exploitable — un seul cadrage fixe
+     obligerait à viser juste du premier coup.                                */
+  const CADRAGES = [0.35, 0.55, 0.8, 1];
+
+  const dessiner = part => {
     const vw = video.videoWidth, vh = video.videoHeight;
     if (!vw || !vh) return null;
-    if (serre) {
-      const cote = Math.round(Math.min(vw, vh) * 0.7);
-      toile.width = toile.height = cote;
-      ctx.drawImage(video, (vw - cote) / 2, (vh - cote) / 2, cote, cote, 0, 0, cote, cote);
-    } else {
+    if (part >= 1) {
       const ech = Math.min(1, 1280 / vw);
       toile.width = Math.round(vw * ech); toile.height = Math.round(vh * ech);
       ctx.drawImage(video, 0, 0, toile.width, toile.height);
+      return toile;
     }
+    const cote = Math.round(Math.min(vw, vh) * part);
+    // On agrandit les petits recadrages : ZXing a besoin de plusieurs pixels
+    // par module pour décoder, en dessous il ne trouve rien.
+    const sortie = Math.max(cote, 640);
+    toile.width = toile.height = sortie;
+    ctx.drawImage(video, (vw - cote) / 2, (vh - cote) / 2, cote, cote, 0, 0, sortie, sortie);
     return toile;
   };
 
   const boucle = async () => {
     if (!vivant) return;
-    const canv = dessiner(images % 4 !== 3);        // 3 images recadrées, 1 entière
+    const canv = dessiner(CADRAGES[images % CADRAGES.length]);
     if (canv) {
       images++;
       let texte = null;
@@ -2602,6 +2620,16 @@ function parseEtiquette(raw) {
   // -- date de péremption. `brut` retient le texte exact reconnu : il sera
   //    retiré avant de chercher le numéro, sans risque de couper un autre nombre.
   let m, brut = '';
+
+  /* Format des étiquettes du CS, relevé sur un vrai scan : « 515-25731-D260731 »
+     = code site, numéro de kit, puis D suivi de la date en AAMMJJ. On le traite
+     en premier, il est sans ambiguïté.                                        */
+  if ((m = s.match(/(?:^|[^0-9A-Za-z])(\d{2,6})-(\d{3,8})-D(\d{2})(\d{2})(\d{2})(?![0-9])/))) {
+    out.numero = m[2];
+    out.peremption = `20${m[3]}-${m[4]}-${m[5]}`;
+    brut = m[0];
+  }
+
   const dates = [
     [/(?:^|\D)((\d{4})-(\d{2})-(\d{2}))(?!\d)/,            (g) => `${g[2]}-${g[3]}-${g[4]}`],  // AAAA-MM-JJ
     [/(?:^|\D)((\d{2})[\/.](\d{2})[\/.](\d{4}))(?!\d)/,    (g) => `${g[4]}-${g[3]}-${g[2]}`],  // JJ/MM/AAAA
@@ -2609,8 +2637,16 @@ function parseEtiquette(raw) {
     [/(?:^|\|)17((\d{2})(\d{2})(\d{2}))(?!\d)/,            (g) => `20${g[2]}-${g[3]}-${g[4] === '00' ? '28' : g[4]}`], // GS1 AI 17
     [/(?:^|\D)((\d{2})[\/.\-](\d{4}))(?!\d)/,              (g) => `${g[3]}-${g[2]}-28`],       // MM/AAAA
   ];
-  for (const [re, fmt] of dates) {
-    if ((m = s.match(re))) { out.peremption = fmt(m); brut = m[1]; break; }
+  if (!out.peremption) {
+    for (const [re, fmt] of dates) {
+      if ((m = s.match(re))) { out.peremption = fmt(m); brut = m[1]; break; }
+    }
+  }
+
+  /* Une date isolée en D+AAMMJJ, si le format complet n'a pas été reconnu. */
+  if (!out.peremption && (m = s.match(/(?:^|[^0-9A-Za-z])D(\d{2})(\d{2})(\d{2})(?![0-9])/))) {
+    out.peremption = `20${m[1]}-${m[2]}-${m[3]}`;
+    brut = brut || m[0];
   }
 
   // -- numéro de kit : nombre isolé en priorité, puis jeton alphanumérique
