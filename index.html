@@ -67,21 +67,26 @@
 }
 
 *,*::before,*::after{box-sizing:border-box}
+
+/* Le double appui rapide ne zoome plus — NULLE PART.
+   `touch-action` ne s'hérite pas : le poser sur `body` ne couvrait que `body`
+   lui-même, et taper deux fois sur une carte de kit, une ligne d'historique ou
+   le fond d'une feuille zoomait quand même. D'où la règle universelle.
+   `manipulation` laisse le défilement et le pincer-pour-zoomer intacts : on ne
+   retire que le double-appui, jamais le recours de quelqu'un qui voit mal.     */
+*{touch-action:manipulation}
+
 html,body{height:100%}
 body{
   margin:0; background:var(--bg); color:var(--fg);
   font-family:var(--ff); font-size:16px; line-height:1.5;
   -webkit-font-smoothing:antialiased; overscroll-behavior-y:contain;
   -webkit-tap-highlight-color:transparent;
-  touch-action:manipulation;      /* deux appuis rapides ne zooment plus */
 }
 
-/* Une commande ne se sélectionne pas et ne zoome pas : sur le terrain, avec
-   des gants, on tape vite et deux fois de suite sans le vouloir.
-   Le pincer-pour-zoomer de la page reste possible — on ne le bloque jamais,
-   c'est le seul recours de quelqu'un qui voit mal.                          */
+/* Une commande ne se sélectionne pas : sur le terrain, avec des gants, on tape
+   vite, et une poignée d'appuis rapprochés surlignait le libellé du bouton.   */
 button, .chip, .type-pick, .picker-item, .type-head, .seg button, .keypad button, .nav button{
-  touch-action:manipulation;
   -webkit-user-select:none; user-select:none;
 }
 h1,h2,h3,h4{margin:0; line-height:1.25; letter-spacing:-0.015em}
@@ -416,12 +421,18 @@ textarea.inp{padding:var(--s3); min-height:80px; resize:vertical}
 
 /* sticky action bar */
 .stickybar{
-  position:fixed; left:0; right:0; bottom:var(--nav-h); z-index:44;
-  background:rgba(255,255,255,.96); backdrop-filter:blur(12px);
-  border-top:1px solid var(--border); padding:var(--s3) var(--s4);
-  padding-bottom:calc(var(--s3));
+  /* La barre du bas mesure --nav-h PLUS la zone de sécurité de l'iPhone
+     (le trait du bas). L'oublier ici faisait passer « Valider la sortie »
+     dessous, coupée en deux. `main` et les toasts la comptent déjà.
+     Sans encoche, env() vaut 0 : la même règle sert aux deux cas.         */
+  position:fixed; left:0; right:0; z-index:44;
+  bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));
+  background:rgba(255,255,255,.97); backdrop-filter:blur(12px);
+  border-top:1px solid var(--border-2); padding:10px var(--s4);
+  box-shadow:0 -6px 18px rgba(15,23,42,.07);
   animation:sheetIn 220ms var(--ease);
 }
+.stickybar-in{gap:10px}
 .stickybar-in{max-width:820px; margin:0 auto; display:flex; align-items:center; gap:var(--s3)}
 
 /* ============================================================
@@ -1985,13 +1996,17 @@ function ajouterKit(el, opts = {}) {
 function proposerSuivant(el) {
   const bandeau = document.createElement('div');
   bandeau.className = 'stickybar';
+  const nb = ajoutsSession.length;
   bandeau.innerHTML = `<div class="stickybar-in">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:800">${ajoutsSession.length} kit${ajoutsSession.length > 1 ? 's' : ''} ajouté${ajoutsSession.length > 1 ? 's' : ''}</div>
-        <div style="font-size:12px;color:var(--fg-3);font-weight:600">Enchaînez avec l'étiquette suivante</div>
+        <div style="font-size:13.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          ${nb} kit${nb > 1 ? 's' : ''} ajouté${nb > 1 ? 's' : ''}</div>
+        <div style="font-size:12px;color:var(--fg-3);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          Étiquette suivante ?</div>
       </div>
-      <button class="btn btn-dark" id="sv-scan">${ico('scan',18)} Kit suivant</button>
-      <button class="icon-btn dark" id="sv-fin" aria-label="Terminer la série">${ico('x',20)}</button>
+      <button class="btn btn-dark btn-sm" id="sv-scan" style="flex:none;padding:0 12px">
+        ${ico('scan',17)} Suivant</button>
+      <button class="icon-btn dark" id="sv-fin" style="flex:none" aria-label="Terminer la série">${ico('x',20)}</button>
     </div>`;
   $('#overlay').appendChild(bandeau);
   document.documentElement.style.setProperty('--bar-h', '76px');
@@ -2012,7 +2027,7 @@ function renderRecap(el) {
         <span class="dot" style="background:${t.hue}"></span>
         <span style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700">${t.label} · <span class="num">n° ${esc(k.numero)}</span></div>
-          <div class="kit-per">Péremption ${fmtDate(k.peremption)}</div>
+          <div class="kit-per">${perStatus(k).id === 'perime' ? 'Périmé' : 'Périme'} ${perStatus(k).detail}</div>
         </span>
         ${badgePer(k)}
         <button class="icon-btn dark" data-undo="${k.id}" aria-label="Annuler cet ajout">${ico('trash',17)}</button>
@@ -2472,8 +2487,8 @@ async function renderNotifications(el) {
 
   host.innerHTML = `
     <p class="hint" style="margin:0 0 14px">Sur <b>cet appareil</b>, pour ${esc(session.nom)} :
-      alerte quand il ne reste qu'un kit Perfusion ou Médicament, et quand un kit périme
-      dans moins de deux semaines.</p>
+      à chaque sortie de kit déclarée par quelqu'un d'autre, quand il ne reste qu'un kit
+      Perfusion ou Médicament, et quand un kit périme dans moins de deux semaines.</p>
     ${refus ? `<p class="err" style="margin:0 0 12px">${ico('alert',14)} Notifications bloquées
       dans les réglages du navigateur — il faut les réautoriser pour ce site.</p>` : ''}
     <div class="row" style="gap:10px">
@@ -2578,7 +2593,8 @@ function ouvrirScanner({ titre, onResult }) {
 
   const video  = $('video', box);
   const msg    = $('#sc-msg', box);
-  const fermer = () => { scanStop?.(); scanStop = null; box.remove(); };
+  let ferme = false;
+  const fermer = () => { ferme = true; scanStop?.(); scanStop = null; box.remove(); };
   $('#sc-close', box).addEventListener('click', fermer);
   $('#sc-manuel', box).addEventListener('click', fermer);
 
@@ -2598,8 +2614,10 @@ function ouvrirScanner({ titre, onResult }) {
   };
 
   demarrerCamera(video, traiter, msg, box)
-    .then(stop => { scanStop = stop; })
-    .catch(e => { msg.textContent = messageCamera(e); });
+    // Si l'utilisateur a fermé avant que la caméra soit prête, on relâche
+    // tout de suite : sinon le flux reste ouvert et le scan suivant échoue.
+    .then(stop => { ferme ? stop() : (scanStop = stop); })
+    .catch(e => { if (!ferme) msg.textContent = messageCamera(e); });
 }
 
 /** Traduit les erreurs de getUserMedia en consigne utilisable sur le terrain. */
@@ -2624,7 +2642,6 @@ async function demarrerCamera(video, onCode, msg, box) {
   });
   video.srcObject = stream;
   await video.play().catch(() => {});
-
   const track = stream.getVideoTracks()[0];
 
   /* Un datamatrix d'étiquette fait quelques millimètres. Mise au point continue
@@ -2654,7 +2671,17 @@ async function demarrerCamera(video, onCode, msg, box) {
   }
 
   let vivant = true;
-  const arret = () => { vivant = false; try { stream.getTracks().forEach(t => t.stop()); } catch {} };
+  /* Relâcher la caméra proprement, sinon la fois suivante `getUserMedia`
+     rend un flux mort et le scan ne marche plus qu'une fois. On éteint la
+     lampe AVANT d'arrêter la piste : une torche laissée allumée sur une
+     piste arrêtée bloque l'appareil photo sur plusieurs téléphones.        */
+  const arret = () => {
+    if (!vivant) return;
+    vivant = false;
+    try { track?.applyConstraints({ advanced: [{ torch: false }] }); } catch {}
+    try { stream.getTracks().forEach(t => t.stop()); } catch {}
+    try { video.pause(); video.srcObject = null; } catch {}
+  };
 
   /* Appuyer sur l'image relance la mise au point. C'est le réflexe qu'on a
      quand un appareil photo ne veut pas accrocher, autant qu'il serve. */
@@ -2672,7 +2699,9 @@ async function demarrerCamera(video, onCode, msg, box) {
   });
 
   // --- Le décodeur : API native quand elle existe, ZXing sinon -------------
+  // Si le chargement échoue ici, on rend la caméra avant de propager l'erreur.
   let decoder, moteur;
+  try {
   const formats = window.BarcodeDetector ? await BarcodeDetector.getSupportedFormats().catch(() => []) : [];
   const utiles = formats.filter(f => ['data_matrix','qr_code','code_128','code_39','ean_13','pdf417'].includes(f));
 
@@ -2703,6 +2732,7 @@ async function demarrerCamera(video, onCode, msg, box) {
       }
     };
   }
+  } catch (e) { arret(); throw e; }
   if (!vivant) return arret;
   msg.textContent = "Cadrez le code de l'étiquette dans le carré";
 
